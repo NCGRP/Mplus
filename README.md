@@ -1,4 +1,4 @@
 Mplus
 =====
 
-C++ program that implements M+ algorithm for core collection development
+C++ program that implements M+ optimization algorithm for core collection assembly
