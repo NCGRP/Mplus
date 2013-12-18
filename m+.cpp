@@ -1,5 +1,6 @@
 #include <sstream>
 #include <iostream>
+#include <iterator>
 #include <fstream>
 #include <math.h>
 #include <vector>
@@ -66,8 +67,8 @@ vector<string> split(string const &input)
     istringstream buffer(input);
     vector<string> ret;
 
-    copy(istream_iterator<string>(buffer), 
-              istream_iterator<string>(),
+    copy(std::istream_iterator<string>(buffer), 
+              std::istream_iterator<string>(),
               back_inserter(ret));
     return ret;
 }
