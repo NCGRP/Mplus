@@ -770,9 +770,14 @@ void printProgBar( int percent )
 
   std::cout<< "\r" "[" << bar << "] ";
   std::cout.width( 3 );
-  std::cout<< percent << "%     " << std::flush;
+  std::cout<< percent << "% complete     "<<omp_get_thread_num()<<" threads	" << std::flush;
 }
 
+bool fileExists(const char *fileName)
+{
+    ifstream infile(fileName);
+    return infile.good();
+}
 
 /***************MAIN*****************/
 
@@ -794,7 +799,9 @@ int main( int argc, char* argv[] )
 	string DoSummary = "no"; //switch to turn on summary function
 	string Kernel = "no"; //switch to include a mandatory set in the core
 	vector<std::string> KernelAccessionList;
-		
+	vector<std::string> BadFiles;
+	string bf;
+
 	//parse the command line for options
 	for (i=0;i<argc;i++)
 	{
@@ -802,15 +809,54 @@ int main( int argc, char* argv[] )
     	{
         	DoSummary = "yes";
         	SumFilePath = argv[i+1];
- 		} 
+			if (fileExists(SumFilePath) == 0) 
+			{
+				bf = "SumFilePath = ";
+				bf += SumFilePath;
+				BadFiles.push_back(bf);
+			}
+		} 
 		
 		if ( string(argv[i]) == "-k" ) 
     	{
         	Kernel = "yes";
         	KerFilePath = argv[i+1];
         	KernelAccessionList = MySetKernel(KerFilePath);
- 		} 
+			if (fileExists(KerFilePath) == 0) 
+			{
+				bf = "KerFilePath = ";
+				bf += KerFilePath;
+				BadFiles.push_back(bf);
+			}
+		} 
 	}
+	
+	//test whether all files specified on the command line exist
+	
+	if (fileExists(VarFilePath) == 0) 
+	{
+		bf = "VarFilePath = ";
+		bf += VarFilePath;
+		BadFiles.push_back(bf);
+	}
+	if (fileExists(DatFilePath) == 0) 
+	{
+		bf = "DatFilePath = ";
+		bf += DatFilePath;
+		BadFiles.push_back(bf);
+	}
+	
+	if (BadFiles.size() > 0)
+	{
+		cout << "\nThe following variables appear to contain misspecified paths:\n";
+		for (i=0;i<BadFiles.size();++i)
+		{
+			cout << "  " << BadFiles[i] << "\n";
+		}
+		cout << "\nPlease check the command line.  Quitting...\n\n";
+		exit (EXIT_FAILURE);
+	}
+	
 	
 	
 	//start the clock
