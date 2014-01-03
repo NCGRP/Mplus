@@ -371,6 +371,8 @@ int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<s
 	return 0;
 }
 
+//MyProcessDatFile using fread and parallelization--in dev--this can't be done because current line
+//is categorized contingent on previous line: is it a new population?
 int MyProcessDatFileII(char* DatFilePath, vector<int> ActiveColumnIDList, vector<std::string> ActiveLociNameList, vector<vector<vector<std::string> > >& ActiveAlleleByPopList, vector<std::string>& FullAccessionNameList)
 {
 
@@ -403,7 +405,6 @@ int MyProcessDatFileII(char* DatFilePath, vector<int> ActiveColumnIDList, vector
 	buffer = MyBigRead(DatFilePath);
 	
 	cout << "gotfile" << "\n";
-	//getchar();
 
 
 	//read in the dat file line by line	
@@ -624,7 +625,7 @@ vector<int> MyGetMaxs(vector<vector<vector<std::string> > > ActiveAlleleByPopLis
 			//cout << "j=" << j << ", CurrLoc.size()=" << CurrLoc.size() << "\n";
 			NewArray.insert(NewArray.end(), CurrLoc.begin(), CurrLoc.end()); //concatenate the new alleles to the growing list for this locus
 		}
-		TempList.push_back (NewArray); 
+		TempList.push_back(NewArray);
 	}
 	MaxAlleles = TempList;  //the maximum number of alleles possible at each locus, for standardization
 	
@@ -637,7 +638,7 @@ vector<int> MyGetMaxs(vector<vector<vector<std::string> > > ActiveAlleleByPopLis
 		ListToFilter = MaxAlleles[i];
 		TempList2 = MyFilterDuplicatesII(ListToFilter);
 		Mtemp =  TempList2.size();
-		ActiveMaxAllelesList.push_back (Mtemp);
+		ActiveMaxAllelesList.push_back(Mtemp);
 	}
 	
 	//for (i=0;i<ActiveMaxAllelesList.size();i++) cout << "ActiveMaxAllelesList[" << i << "]=" << ActiveMaxAllelesList[i] << "\n";
@@ -753,8 +754,16 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 	return 0;
 }
 
+/*//write current results for each thread to a recovery file
+void WriteRecoveryFile (ofstream RecoveryFile, int i)
+{
+	stringstream ss;
+	ss << omp_get_thread_num();
+	string foo = ss.str();
+	RecoveryFile << "I am thread " << foo << ", working on job " << i << "\n";
+}*/
 
-void printProgBar( int percent )
+void printProgBar( int percent)
 {
   std::string bar;
 
@@ -770,7 +779,7 @@ void printProgBar( int percent )
 
   std::cout<< "\r" "[" << bar << "] ";
   std::cout.width( 3 );
-  std::cout<< percent << "% complete     "<<omp_get_thread_num()<<" threads	" << std::flush;
+  std::cout<< percent << "% complete     thread "<<omp_get_thread_num() <<" "<< std::flush;
 }
 
 bool fileExists(const char *fileName)
@@ -791,8 +800,8 @@ int main( int argc, char* argv[] )
 	const int SamplingFreq = atoi(argv[5]);
 	const int NumReplicates = atoi(argv[6]);
 	char* OutFilePath = argv[7];
-	char* SumFilePath;
-	char* KerFilePath;
+	char* SumFilePath = NULL;
+	char* KerFilePath = NULL;
 	
 	//declare variables
 	int i, j, k, l;
@@ -866,6 +875,8 @@ int main( int argc, char* argv[] )
 	//print out input variables
 	cout << "Input variables:\n  VarFilePath = " << VarFilePath << "\n";
 	cout << "  DatFilePath = " << DatFilePath << "\n";
+	if (KerFilePath != NULL) cout << "  KerFilePath = " << KerFilePath << "\n";
+	if (SumFilePath != NULL) cout << "  SumFilePath = " << SumFilePath << "\n";
 	cout << "  MinCoreSize = " << MinCoreSize << "\n";
 	cout << "  MaxCoreSize = " << MaxCoreSize << "\n";
 	cout << "  SamplingFreq = " << SamplingFreq << "\n";
@@ -920,8 +931,10 @@ int main( int argc, char* argv[] )
 	// { { {pop1,loc1 alleles},{pop1,loc2 alleles},...}, { {pop2,loc1 alleles},{pop2,loc2 alleles},...} } }
 	vector<std::string> FullAccessionNameList;
 	
+	
 	MyProcessDatFile(DatFilePath, ActiveColumnIDList, ActiveLociNameList, ActiveAlleleByPopList, FullAccessionNameList);
-	//latter two variables above are updated as references in MyProcessVarFile
+	//MyProcessDatFileII(DatFilePath, ActiveColumnIDList, ActiveLociNameList, ActiveAlleleByPopList, FullAccessionNameList);
+	//latter two variables above are updated as references
 	
 		/*
 		//Print out FullAccessionNameList
@@ -944,6 +957,9 @@ int main( int argc, char* argv[] )
 		
 		}
 		*/
+		
+	
+	
 	
 	//.dat file, target loci
 	vector<vector<vector<std::string> > > TargetAlleleByPopList; //structure of this 3D vector is:
@@ -951,7 +967,7 @@ int main( int argc, char* argv[] )
 	vector<std::string> TargetAccessionNameList;
 	
 	MyProcessDatFile(DatFilePath, TargetColumnIDList, TargetLociNameList, TargetAlleleByPopList, TargetAccessionNameList);
-	//latter two variables above are updated as references in MyProcessVarFile. TargetAccessionNameList is never used,
+	//latter two variables above are updated as references. TargetAccessionNameList is never used,
 	//just created here and sent as a dummy so the function doesn't update FullAccessionNameList
 		
 		/*//Print out lists of unique target alleles from TargetAlleleByPopList
@@ -970,6 +986,7 @@ int main( int argc, char* argv[] )
 		
 		}
 		*/
+		
 
 
 	//CALCULATE SOME USEFUL VARIABLES
@@ -1005,19 +1022,20 @@ int main( int argc, char* argv[] )
 	}
 	//reverse sort KernelAccessionIndex, necessary later
 	std::sort(KernelAccessionIndex.begin(), KernelAccessionIndex.end(), std::greater<int>());
-	
-	
+		
+
 	
 	//get maximum number of alleles possible at each locus for active and target
 	vector<int> ActiveMaxAllelesList, TargetMaxAllelesList;
 	ActiveMaxAllelesList = MyGetMaxs(ActiveAlleleByPopList);
 	TargetMaxAllelesList = MyGetMaxs(TargetAlleleByPopList);
+		
 	
 	cout << "\n\n" << "Number of accessions = " << NumberOfAccessions << ", Number of loci = " << NumLoci;
 	if (Kernel == "yes") cout << ", Number of kernel accessions = " << KernelAccessionList.size() << "\n\n";
 	else cout << "\n\n";
 	
-	
+
 	//catch some errors
 	if (MaxCoreSize > NumberOfAccessions)
 	{
@@ -1047,7 +1065,8 @@ int main( int argc, char* argv[] )
     cout << "\nTargetMaxAllelesList:\n";
 	for (i=0; i<TargetMaxAllelesList.size(); i++) cout << TargetMaxAllelesList[i] << ",\n";
 	*/
-
+		
+	
 
 	//COMMENCE M+
 	
@@ -1064,16 +1083,18 @@ int main( int argc, char* argv[] )
 		l++;
 		}
 	}
+		
 
 	//set up vectors to fill with results
 	double V1 = l; //(MaxCoreSize - MinCoreSize + 1)*NumReplicates; //number of rows in output vectors
 	vector<vector<double> > Results(V1, vector<double>(9)); //will contain numerical results
 	vector<vector<string> > Members(V1); //will contain core set members
+		
 	
 	
 	cout << "Optimizing...\n";
 
-	
+
 	
 	//compile as parallel or not?
 	int parallelism_enabled = 1; //0=no, not 0 = yes
@@ -1083,6 +1104,7 @@ int main( int argc, char* argv[] )
 		int r, nr, RandAcc, b, row, bsc, plateau; //r = core size, nr = controller to repeat NumReplicates times
 									//row = result vector row number, bsc = holds best sub core member, and other indexed accessions
 									//plateau = index of the number of reps in optimization loop with same diversity value
+									
 		double RandomActiveDiversity;
 		double AltRandomActiveDiversity;
 		double StartingRandomActiveDiversity;
@@ -1115,6 +1137,23 @@ int main( int argc, char* argv[] )
 		tt = (time(NULL));
 		srand ( tt ^ omp_get_thread_num() ); //initialize
 		
+		//set up a recovery file for each thread that saves progress as program runs
+		/*stringstream ss;
+		ss << omp_get_thread_num();
+		string foo = ss.str();
+		stringstream RecoveryFilePath;
+		cout << "pre\n";
+		RecoveryFilePath << OutFilePath;// += ".t" += foo += ".tmp";// = ( string(OutFilePath) + ".t" + foo + ".tmp" ); 
+		cout << RecoveryFilePath << "\n";
+		getchar();
+		ofstream RecoveryFile; 
+		RecoveryFile.open(RecoveryFilePath);
+		RecoveryFile.close(); //quick open close done to clear any existing file each time program is run
+		RecoveryFile.open(RecoveryFilePath, ios::out | ios::app); //open file in append mode
+		RecoveryFile << "core size	random active diversity	optimized active diversity	random target diversity	optimized target diversity	alt random active diversity	alt optimized active diversity	alt random target diversity	alt optimized target diversity	core members" << "\n";
+*/
+
+
 
 		//do parallelization so that each rep by core size combo can be
 		//handled by a distinct thread.  this involves figuring out the total
@@ -1453,7 +1492,7 @@ int main( int argc, char* argv[] )
 					//display progress
 					progindex = progindex + 1;
 					percent = 100*(progindex/V1);
-					printProgBar( percent ); 
+					printProgBar(percent); 
 					//cout << progindex << "\n";
 					
 				//} //end NumReplicates
