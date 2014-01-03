@@ -754,14 +754,25 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 	return 0;
 }
 
-/*//write current results for each thread to a recovery file
-void WriteRecoveryFile (ofstream RecoveryFile, int i)
+//write current results for each thread to a recovery file
+void WriteRecoveryFile (const char* RecoveryFilePath, int r, double StartingRandomActiveDiversity, double best, double RandomTargetDiversity, double OptimizedTargetDiversity, double StartingAltRandomActiveDiversity, double AltOptimizedActiveDiversity, double AltRandomTargetDiversity, double AltOptimizedTargetDiversity, vector<std::string> TempListStr)
 {
 	stringstream ss;
 	ss << omp_get_thread_num();
 	string foo = ss.str();
-	RecoveryFile << "I am thread " << foo << ", working on job " << i << "\n";
-}*/
+	ofstream RecoveryFile;
+	RecoveryFile.open(RecoveryFilePath, ios::out | ios::app); //open file in append mode
+	RecoveryFile <<	r << "\t" << StartingRandomActiveDiversity << "\t" << best << "\t" << RandomTargetDiversity << "\t" << OptimizedTargetDiversity << "\t" << StartingAltRandomActiveDiversity << "\t" << AltOptimizedActiveDiversity << "\t" << AltRandomTargetDiversity << "\t" << AltOptimizedTargetDiversity << "\t(";
+	for (int i=0;i<TempListStr.size();++i)
+	{
+		if (i == (TempListStr.size() - 1) )
+		{
+			RecoveryFile << TempListStr[i] << ")\n";
+		}
+		else RecoveryFile << TempListStr[i] << ",";	
+	}
+	RecoveryFile.close();
+}
 
 void printProgBar( int percent)
 {
@@ -1138,20 +1149,16 @@ int main( int argc, char* argv[] )
 		srand ( tt ^ omp_get_thread_num() ); //initialize
 		
 		//set up a recovery file for each thread that saves progress as program runs
-		/*stringstream ss;
-		ss << omp_get_thread_num();
-		string foo = ss.str();
-		stringstream RecoveryFilePath;
-		cout << "pre\n";
-		RecoveryFilePath << OutFilePath;// += ".t" += foo += ".tmp";// = ( string(OutFilePath) + ".t" + foo + ".tmp" ); 
-		cout << RecoveryFilePath << "\n";
-		getchar();
+		stringstream ss;
+		ss << OutFilePath << ".t" << omp_get_thread_num() << ".tmp"; 
+		string rfp = ss.str();
+		const char* RecoveryFilePath = rfp.c_str();
 		ofstream RecoveryFile; 
 		RecoveryFile.open(RecoveryFilePath);
 		RecoveryFile.close(); //quick open close done to clear any existing file each time program is run
 		RecoveryFile.open(RecoveryFilePath, ios::out | ios::app); //open file in append mode
 		RecoveryFile << "core size	random active diversity	optimized active diversity	random target diversity	optimized target diversity	alt random active diversity	alt optimized active diversity	alt random target diversity	alt optimized target diversity	core members" << "\n";
-*/
+		RecoveryFile.close();
 
 
 
@@ -1489,6 +1496,9 @@ int main( int argc, char* argv[] )
 					//core set members
 					Members[row] = TempListStr; 
 			
+					//write the results onto the recovery files
+					WriteRecoveryFile(RecoveryFilePath, r, StartingRandomActiveDiversity, best, RandomTargetDiversity, OptimizedTargetDiversity, StartingAltRandomActiveDiversity, AltOptimizedActiveDiversity, AltRandomTargetDiversity, AltOptimizedTargetDiversity, TempListStr);
+					
 					//display progress
 					progindex = progindex + 1;
 					percent = 100*(progindex/V1);
@@ -1541,6 +1551,15 @@ int main( int argc, char* argv[] )
 	//wrap up write step
 	output.close();
 
+	//delete all recovery files
+	#pragma omp parallel if(parallelism_enabled) 
+	{		
+		stringstream ss;
+		ss << OutFilePath << ".t" << omp_get_thread_num() << ".tmp"; 
+		string rfp = ss.str();
+		const char* RecoveryFilePath = rfp.c_str();
+		remove(RecoveryFilePath);
+	}
 	
 	//stop the clock
 	time (&end);
