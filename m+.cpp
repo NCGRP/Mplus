@@ -73,75 +73,128 @@ vector<string> split(string const &input)
     return ret;
 }
 
-int MyProcessVarFile(char* VarFilePath, vector<int>& ActiveColumnIDList, vector<std::string>& ActiveLociNameList, vector<int>& TargetColumnIDList, vector<std::string>& TargetLociNameList)
+int MyProcessVarFile(char* VarFilePath, vector<int>& AllColumnIDList, vector<std::string>& AllLociNameList, vector<int>& ActiveColumnIDList, vector<std::string>& ActiveLociNameList, vector<int>& TargetColumnIDList, vector<std::string>& TargetLociNameList, vector<vector<int> >& ColKeyToAllAllelesByPopList, vector<int>& ReferenceOrTargetKey)
 {
     //declare variables
     std::string foo;
     vector<std::string> foovector;
-    int count;
+    int k;
     int i=0; // i is the row number
 	
 	std::ifstream infile;
 	infile.open(VarFilePath);
-        while( !infile.eof() ) // To get all the lines.
-       {
-	        std::getline (infile, foo); // Saves the line in foo.
+    while( !infile.eof() ) // To get all the lines.
+    {
+	    std::getline (infile, foo); // Saves the line in foo.
 	        
-	        //split foo on whitespace
-			foovector = split(foo);
+	    //split foo on whitespace
+		foovector = split(foo);
 
-	        
-	        /*//old split that only works on tab
-	        foo.append("\t");  //add a tab so character at end of line is recovered during split
-	        if (foo == "\t") break; //get out of while when foo string is empty
-	        
-	        //test whether variable contains qualitative data, "inactive" (1) or "quantitative" (3) ignored
-	        //convert foo into a string array
-			std::stringstream ss;
-			ss.str("");  //clear the stream
-			ss << foo;
-			
-			//split string foo on tab
-			while(std::getline(ss, foo, '	'))
+		//identify active columns with qualitative data, classify those as reference or target
+		if (foovector[1] == "2") //column holds qualitative data
+		{
+			AllColumnIDList.push_back(i);
+			AllLociNameList.push_back(foovector[0]);
+				
+			if ((foovector[2] == "1") && (foovector[3] == "0")) //reference variable
 			{
-				foovector.push_back(foo);
+				ActiveColumnIDList.push_back(i);
+				ActiveLociNameList.push_back(foovector[0]);
 			}
-			*/
-			
-			//identify columns with qualitative data, classify those as active or target
-			if (foovector[1] == "2") //column holds qualitative data
+			else if ((foovector[2] == "0") && (foovector[3] == "1"))  //target variable
 			{
-				if ((foovector[2] == "1") && (foovector[3] == "0")) //active variable
-				{
-					ActiveColumnIDList.push_back(i);
-					ActiveLociNameList.push_back(foovector[0]);
-				}
-				else if ((foovector[2] == "0") && (foovector[3] == "1"))  //target variable
-				{
-					TargetColumnIDList.push_back(i);
-					TargetLociNameList.push_back(foovector[0]);
-				}
-			
+				TargetColumnIDList.push_back(i);
+				TargetLociNameList.push_back(foovector[0]);
 			}
-			
-			
-		//Print out each column
-		/*
-	    for (count = 0; count < 6; count++)
-	    {
-	         cout << "item " << count << " = " << foovector[count] << "\n"; // Prints out each item of foovector.
-	    }
-	    */
-	    
-	    
+		}
 	     
-	    i++;
-	    foovector.clear();  //zero vector foovector
-       }
-
+	i++;
+	foovector.clear();  //zero vector foovector
+    }
+	
 	infile.close();
+	
+	
+	//make a key showing which loci are target and which are reference
+	//this will be used later to sort out the AllAlleleByPopList
+	std::string uniqloc;
+	std::string currloc;
+	vector<std::string> UniqLociNameList;
+	
+	//find unique locus names
+	UniqLociNameList = AllLociNameList;
+	sort( UniqLociNameList.begin(), UniqLociNameList.end() );
+	UniqLociNameList.erase( std::unique( UniqLociNameList.begin(), UniqLociNameList.end() ), UniqLociNameList.end() );
+	
+	//define 2d vector that is key to columns, size to number of unique loci
+	ColKeyToAllAllelesByPopList.resize( UniqLociNameList.size() ); //size to number of loci
+	int b;
+	for (i=0;i<UniqLociNameList.size();++i)
+	{
+		uniqloc = UniqLociNameList[i];
+		for (k=0;k<AllLociNameList.size();++k)
+		{
+			currloc = AllLociNameList[k];
+			if (currloc == uniqloc)
+			{
+				b = AllColumnIDList[k]; //get the corresponding value in the columnID list
+				ColKeyToAllAllelesByPopList[i].push_back(b);	
+			}	
+		}		
+	}
+	
+	//define a 1d vector that describes whether the loci in the ColKey are reference(0) or target(1)
+	double rt;
+	ReferenceOrTargetKey.resize( ColKeyToAllAllelesByPopList.size() ); //sized to same length as key
+	for (i=0;i<ColKeyToAllAllelesByPopList.size();++i)
+	{
+		rt=0;
+		//test whether all elements are categorized as reference or as target, if not, raise error
+		for (k=0;k<ColKeyToAllAllelesByPopList[i].size();++k)
+		{
+			b=ColKeyToAllAllelesByPopList[i][k];
+			if(std::find(ActiveColumnIDList.begin(), ActiveColumnIDList.end(), b) != ActiveColumnIDList.end())
+			{
+   			 	//column is reference
+   			 	rt=rt+0;
+			} 
+			else if(std::find(TargetColumnIDList.begin(), TargetColumnIDList.end(), b) != TargetColumnIDList.end())
+			{
+    			//column is target
+    			rt=rt+1;
+			}
+		}
+		
+		//test whether columns in key represent reference or target loci
+		if (rt == 0) ReferenceOrTargetKey[i] = 0; //it is a reference
+		else if (  rt/ColKeyToAllAllelesByPopList[i].size() == 1 ) ReferenceOrTargetKey[i] = 1; //it is a target
+		else 
+		{
+			cout << "ERROR:  Some loci are described as both reference and target.  Please check your var file. Quitting...\n\n";
+			exit (EXIT_FAILURE);
+		}
+		
+	}
+	
+	//print out ColKeyToAllAllelesByPopList
+	for (i=0;i<ColKeyToAllAllelesByPopList.size();++i)
+	{
+		cout << "Locus "<<UniqLociNameList[i]<< " {";
+		for (k=0;k<ColKeyToAllAllelesByPopList[i].size();++k)
+		{
+			cout<<ColKeyToAllAllelesByPopList[i][k]<<",";
+		}
+		cout << "\n";
+	}
+	
+	//print out ReferenceOrTargetKey
+	for (i=0;i<ReferenceOrTargetKey.size();++i)
+	{
+		cout << ReferenceOrTargetKey[i] << "\n";
+	}	
+	
+	getchar();
 
-	//system ("pause");
 	return 0;
 }
 
@@ -211,43 +264,21 @@ int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<s
     while( !infile.eof() ) // To get all the lines.
     {
 	    if (IsNewPop == "no") //get a new line
-	    //if ( (strcmp(IsNewPop, "no")) == 0 ) //IsNewPop == "no", get a new line
 	    {
 			std::getline (infile, foo); // Saves the line in foo.
-			
-			//cout << "line " << zz << "="<<foo<<"\n";
 			++zz;
-			
 
 			//split on whitespace
 			foovector = split(foo);
-			
-			/*//old method to split on tab only
-			foo.append("\t");  //add a tab so character at end of line is recovered during split
-			if (foo == "\t") break; //get out of while when foo string is empty
-		
-			//convert foo into a string array
-			std::stringstream ss;
-			ss.str("");  //clear the stream
-			ss << foo;
-			
-			//split string foo on tab
-			vector<std::string>().swap(foovector); //clear foovector
-			while(std::getline(ss, foo, '	'))
-			{
-				foovector.push_back(foo);
-			}
-			*/
 
 			//extract population identifier from first column
 			NewPopID = foovector[0];
 			
 		}
 		else if (IsNewPop == "yes") IsNewPop = "no"; //reset it to get a new line unless it is a new allele
-	    //else if ( (strcmp(IsNewPop,"yes")) == 0 ) IsNewPop = "no"; //IsNewPop == "yes", reset it to get a new line unless it is a new allele
-	//determine whether the current line belongs to the current population, or is the first from a new population
+	
+		//determine whether the current line belongs to the current population, or is the first from a new population
 		if (NewPopID == OldPopID)
-		//if ( (strcmp(NewPopID,OldPopID)) == 0)  //NewPopID == OldPopID
 		{
 			//extract the alleles, by locus, for a single population into a list
 			OldLocusName = "starting value";
@@ -265,10 +296,10 @@ int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<s
 				cout << "CurrLocusName=" << CurrLocusName << "\n";
 				*/
 				
-				//test whether you already have a list item for this locus, note this works for both building the initial list of arrays (using the first part of "or") or adding to the existing list of arrays (after "or")
+				//test whether you already have a list item for this locus, 
+				//note this works for both building the initial list of arrays (using the first part of "or") or adding to the existing list of arrays (after "or")
 				//count command tests whether CurrLocusName appears in LocusNames
 				if (CurrLocusName == OldLocusName || std::count (LocusNames.begin(), LocusNames.end(), CurrLocusName) >= 1 )
-				//if ( (strcmp(CurrLocusName,OldLocusName)) == 0 || std::count (LocusNames.begin(), LocusNames.end(), CurrLocusName) >= 1 )
 				{
 					//determine whether you are building the list or adding to it, then figure out what gene you are in
 					if (std::count (LocusNames.begin(), LocusNames.end(), CurrLocusName) >= 1)
@@ -276,7 +307,6 @@ int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<s
 						for (j=0; j<LocusNames.size(); j++)
 						{
 							if (LocusNames[j] == CurrLocusName)
-							//if ( (strcmp(LocusNames[j],CurrLocusName)) == 0)
 							{
 								CurrItemIndex = j;
 								break;	
@@ -371,6 +401,39 @@ int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<s
 	return 0;
 }
 
+
+//reduces the master vector of all alleles into subsets containing reference or target loci only
+int MyReduceToRef(vector<vector<vector<std::string> > > AllAlleleByPopList, vector<int> ActiveColumnIDList, vector<vector<vector<std::string> > >& ActiveAlleleByPopList)
+{
+	int l, p;
+	vector<std::string> locvec;
+	vector<vector<std::string> > popvec;
+	for (int i=0;i<AllAlleleByPopList.size();++i) //iterate thru populations
+	{
+		for (int j=0;j<ActiveColumnIDList.size();++j) //iterate thru loci
+		{
+			l = ActiveColumnIDList[j] - ActiveColumnIDList[0]; //get the active locus by column number, have to subtract the 0 index because 
+															//header columns (popID, indID, Acc#, etc) have been removed in the creation of AllAlleleByPopList
+			cout << "l="<< l << "\n";
+			
+			locvec = AllAlleleByPopList[i][l]; //add the vector of alleles corresponding to the desired locus to locvec
+			
+			for (int k=0;k<locvec.size();++k)
+			{
+				cout << "locvec[k]=" << locvec[k] << "\n";
+			
+			}
+			popvec.push_back(locvec); //add the vector of alleles to the 2D vector for population j
+			vector<std::string>().swap(locvec); //clear locvec
+		}
+		ActiveAlleleByPopList.push_back(popvec); //add the vector for population i to the 3D vector
+		vector<vector<std::string> >().swap(popvec); //clear popvec
+	}
+	//ActiveAlleleByPopList has now been updated
+	return 0;
+}
+
+
 //MyProcessDatFile using fread and parallelization--in dev--this can't be done because current line
 //is categorized contingent on previous line: is it a new population?
 int MyProcessDatFileII(char* DatFilePath, vector<int> ActiveColumnIDList, vector<std::string> ActiveLociNameList, vector<vector<vector<std::string> > >& ActiveAlleleByPopList, vector<std::string>& FullAccessionNameList)
@@ -398,14 +461,14 @@ int MyProcessDatFileII(char* DatFilePath, vector<int> ActiveColumnIDList, vector
     vector<std::string> ListToFilter;
     std::string IsNewPop = "no";
 
-
+/*
 	//read the whole file into a buffer using fread
     char * buffer;
 	cout << "gettingfile" << "\n";
 	buffer = MyBigRead(DatFilePath);
 	
 	cout << "gotfile" << "\n";
-
+*/
 
 	//read in the dat file line by line	
 	// code using file stream
@@ -416,14 +479,6 @@ int MyProcessDatFileII(char* DatFilePath, vector<int> ActiveColumnIDList, vector
 	
     while( !infile.eof() ) // To get all the lines.
     {
-	 /*
-	 //code using stringstream
-	std::istringstream infile(buffer); //put buffer into stringstream called infile
-    while (infile >> foo) 
-    {
-   */
-
-
 	    if (IsNewPop == "no") //get a new line
 	    {
 			std::getline (infile, foo); // Saves the line in foo.
@@ -431,23 +486,6 @@ int MyProcessDatFileII(char* DatFilePath, vector<int> ActiveColumnIDList, vector
 			//split on whitespace
 			foovector = split(foo);
 			
-			/*//old method to split on tab only
-			foo.append("\t");  //add a tab so character at end of line is recovered during split
-			if (foo == "\t") break; //get out of while when foo string is empty
-		
-			//convert foo into a string array
-			std::stringstream ss;
-			ss.str("");  //clear the stream
-			ss << foo;
-			
-			//split string foo on tab
-			vector<std::string>().swap(foovector); //clear foovector
-			while(std::getline(ss, foo, '	'))
-			{
-				foovector.push_back(foo);
-			}
-			*/
-
 			//extract population identifier from first column
 			NewPopID = foovector[0];
 			
@@ -896,13 +934,18 @@ int main( int argc, char* argv[] )
 	
 	//PROCESS INPUT DATA
 	//.var file
+	vector<int> AllColumnIDList;
+	vector<std::string> AllLociNameList;
 	vector<int> ActiveColumnIDList;
 	vector<std::string> ActiveLociNameList;
     vector<int> TargetColumnIDList;
 	vector<std::string> TargetLociNameList;
+	vector<vector<int> > ColKeyToAllAllelesByPopList;
+	vector<int> ReferenceOrTargetKey;
+
 	
-	MyProcessVarFile(VarFilePath, ActiveColumnIDList, ActiveLociNameList, TargetColumnIDList, TargetLociNameList ); 
-	//latter four variables above are updated as references in MyProcessVarFile
+	MyProcessVarFile(VarFilePath, AllColumnIDList, AllLociNameList, ActiveColumnIDList, ActiveLociNameList, TargetColumnIDList, TargetLociNameList, ColKeyToAllAllelesByPopList, ReferenceOrTargetKey ); 
+	//all but first variable above are updated as references in MyProcessVarFile
 
 		//Print out ActiveColumnIDList and ActiveLociNameList
 		if (ActiveColumnIDList.size() == 0)
@@ -936,7 +979,89 @@ int main( int argc, char* argv[] )
 	//process .dat file
 	cout << "\nProcessing .dat file...\n";
 	
+	//.dat file, all loci
+	vector<vector<vector<std::string> > > AllAlleleByPopList; //structure of this 3D vector is:
+	// { { {pop1,loc1 alleles},{pop1,loc2 alleles},...}, { {pop2,loc1 alleles},{pop2,loc2 alleles},...} } }
+	vector<std::string> FullAccessionNameList;
 	
+	MyProcessDatFile(DatFilePath, AllColumnIDList, AllLociNameList, AllAlleleByPopList, FullAccessionNameList);
+	
+				//Print out FullAccessionNameList
+		cout << "\n\nPopulation names\n";
+		for (i=0; i<FullAccessionNameList.size();i++) cout << FullAccessionNameList[i] << "\n";
+		
+		//Print out lists of unique All alleles from AllAlleleByPopList
+		for (i=0;i<AllAlleleByPopList.size() ;i++)
+		{
+			cout << "Population " << i << "\n";
+			for (j=0;j<AllAlleleByPopList[i].size();j++)
+			{
+				cout << "Locus " << j << "\n";
+				for (k=0;k<AllAlleleByPopList[i][j].size();k++)
+				{
+					cout << AllAlleleByPopList[i][j][k] << ",";
+				}
+				cout << "\n";
+			}
+		
+		}
+		
+	
+	
+	
+	
+	cout << "here1\n";
+	
+	
+	//sort AllAlleleByPopList into reference and target loci lists
+	vector<vector<vector<std::string> > > ActiveAlleleByPopList; 
+	vector<vector<vector<std::string> > > TargetAlleleByPopList; 
+	//reference
+	MyReduceToRef(AllAlleleByPopList, ActiveColumnIDList, ActiveAlleleByPopList); //latter variable updated as reference
+	cout << "here2\n";
+	//target
+	MyReduceToRef(AllAlleleByPopList, TargetColumnIDList, TargetAlleleByPopList); //latter variable updated as reference
+	cout << "here3\n";
+			
+			
+			//Print out FullAccessionNameList
+		cout << "\n\nPopulation names\n";
+		for (i=0; i<FullAccessionNameList.size();i++) cout << FullAccessionNameList[i] << "\n";
+		
+		//Print out lists of unique active alleles from ActiveAlleleByPopList
+		for (i=0; i<ActiveAlleleByPopList.size() ;i++)
+		{
+			cout << "Population " << i << "\n";
+			for (j=0;j<ActiveAlleleByPopList[i].size();j++)
+			{
+				cout << "Locus " << j << "\n";
+				for (k=0;k<ActiveAlleleByPopList[i][j].size();k++)
+				{
+					cout << ActiveAlleleByPopList[i][j][k] << ",";
+				}
+				cout << "\n";
+			}
+		
+		}
+
+		for (i=0; i<TargetAlleleByPopList.size() ;i++)
+		{
+			cout << "Population " << i << "\n";
+			for (j=0;j<TargetAlleleByPopList[i].size();j++)
+			{
+				cout << "Locus " << j << "\n";
+				for (k=0;k<TargetAlleleByPopList[i][j].size();k++)
+				{
+					cout << TargetAlleleByPopList[i][j][k] << ",";
+				}
+				cout << "\n";
+			}
+		
+		}
+
+getchar();
+	
+/*	
 	//.dat file, active loci
 	vector<vector<vector<std::string> > > ActiveAlleleByPopList; //structure of this 3D vector is:
 	// { { {pop1,loc1 alleles},{pop1,loc2 alleles},...}, { {pop2,loc1 alleles},{pop2,loc2 alleles},...} } }
@@ -947,7 +1072,7 @@ int main( int argc, char* argv[] )
 	//MyProcessDatFileII(DatFilePath, ActiveColumnIDList, ActiveLociNameList, ActiveAlleleByPopList, FullAccessionNameList);
 	//latter two variables above are updated as references
 	
-		/*
+		
 		//Print out FullAccessionNameList
 		cout << "\n\nPopulation names\n";
 		for (i=0; i<FullAccessionNameList.size();i++) cout << FullAccessionNameList[i] << "\n";
@@ -967,7 +1092,7 @@ int main( int argc, char* argv[] )
 			}
 		
 		}
-		*/
+		
 		
 	
 	
@@ -981,7 +1106,7 @@ int main( int argc, char* argv[] )
 	//latter two variables above are updated as references. TargetAccessionNameList is never used,
 	//just created here and sent as a dummy so the function doesn't update FullAccessionNameList
 		
-		/*//Print out lists of unique target alleles from TargetAlleleByPopList
+		//Print out lists of unique target alleles from TargetAlleleByPopList
 		for (i=0; i<TargetAlleleByPopList.size() ;i++)
 		{
 			cout << "Population " << i << "\n";
@@ -996,9 +1121,10 @@ int main( int argc, char* argv[] )
 			}
 		
 		}
-		*/
 		
-
+		getchar();
+		
+*/
 
 	//CALCULATE SOME USEFUL VARIABLES
 	//get total number of accessions
