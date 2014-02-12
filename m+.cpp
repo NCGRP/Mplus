@@ -1,4 +1,4 @@
-#include <sstream>
+/*#include <sstream>
 #include <iostream>
 #include <iterator>
 #include <fstream>
@@ -9,8 +9,9 @@
 #include <time.h>
 #include <omp.h>
 #include <algorithm>
+*/
 #include "m+.hpp"
-using namespace std;
+//using namespace std;
 
 
 /*
@@ -30,10 +31,12 @@ outputfile = path to output
 Options:
 -s summaryfile = compute summary statistics and write to an output file
           with the path summaryfile
+-b idealcorefile = compute the minimum set of accessions necessary to retain all variation, i.e.
+		  the "ideal" or "best" core, write output to bestcorefile.  This option ignores the kernel file.
 -k kernelfile = use an MSTRAT .ker file to specify mandatory members of the 
           core.  The number of included accessions must be less than or equal to mincoresize.
 
-example: ./m+ ./beet.var ./beet.dat 3 28 2 3 ./beetout.txt -s ./beetsum.txt -k beet.ker
+example: ./m+ ./beet.var ./beet.dat 3 28 2 3 ./beetout.txt -s ./beetsum.txt -b beetideal.txt -k beet.ker
 */
 
 
@@ -86,8 +89,23 @@ vector<std::string> unsortedRemoveDuplicates(vector<std::string> numbers)
 	return uniqvec;
 }
 
+//tabulates the ploidy for each locus
+vector<int> GetPloidy(vector<std::string> AllLociNameList, vector<std::string> UniqLociNameList)
+{
+	int i, c, n;
+	std::string b;
+	vector<int> PloidyList;
+	for (i=0;i<UniqLociNameList.size();++i)
+	{
+		b = UniqLociNameList[i];
+		n = std::count (AllLociNameList.begin(), AllLociNameList.end(), b);
+		PloidyList.push_back(n);
+	}
+	
+	return PloidyList;
+}
 
-int MyProcessVarFile(char* VarFilePath, vector<int>& AllColumnIDList, vector<std::string>& AllLociNameList, vector<int>& ActiveColumnIDList, vector<std::string>& ActiveLociNameList, vector<int>& TargetColumnIDList, vector<std::string>& TargetLociNameList, vector<vector<int> >& ColKeyToAllAllelesByPopList, vector<int>& ReferenceOrTargetKey)
+int MyProcessVarFile(char* VarFilePath, vector<int>& AllColumnIDList, vector<std::string>& AllLociNameList, vector<int>& ActiveColumnIDList, vector<std::string>& ActiveLociNameList, vector<int>& TargetColumnIDList, vector<std::string>& TargetLociNameList, vector<vector<int> >& ColKeyToAllAllelesByPopList, vector<int>& ReferenceOrTargetKey, vector<int>& PloidyList, vector<std::string>& UniqLociNameList)
 {
     //declare variables
     std::string foo;
@@ -133,17 +151,12 @@ int MyProcessVarFile(char* VarFilePath, vector<int>& AllColumnIDList, vector<std
 	//this will be used later to sort out the AllAlleleByPopList
 	std::string uniqloc;
 	std::string currloc;
-	vector<std::string> UniqLociNameList;
 	
-	//find unique locus names
-	//easy way, but messes up sort order
-	/*
-	UniqLociNameList = AllLociNameList;
-	sort( UniqLociNameList.begin(), UniqLociNameList.end() );
-	UniqLociNameList.erase( std::unique( UniqLociNameList.begin(), UniqLociNameList.end() ), UniqLociNameList.end() );
-	*/
-	//hard way, retains sort order
+	//find unique locus names, retains sort order
 	UniqLociNameList = unsortedRemoveDuplicates(AllLociNameList);
+
+	//tabulate the ploidy for each locus
+	PloidyList = GetPloidy(AllLociNameList, UniqLociNameList);
 	
 	//define 2d vector that is key to columns, size to number of unique loci
 	ColKeyToAllAllelesByPopList.resize( UniqLociNameList.size() ); //size to number of loci
@@ -250,7 +263,7 @@ char * MyBigRead(char* DatFilePath)
 	return buffer;
 }
 
-int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<std::string> ActiveLociNameList, vector<vector<vector<std::string> > >& ActiveAlleleByPopList, vector<std::string>& FullAccessionNameList)
+int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<std::string> ActiveLociNameList, vector<vector<vector<std::string> > >& ActiveAlleleByPopList, vector<std::string>& FullAccessionNameList, vector<std::string>& IndivPerPop, vector<std::string>& AllAlleles)
 {
 
 
@@ -283,17 +296,23 @@ int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<s
     {
 	    if (IsNewPop == "no") //get a new line
 	    {
+			vector<std::string>().swap(foovector); //clear foovector
+			foo.clear(); //clear foo
+			
 			std::getline (infile, foo); // Saves the line in foo.
+			if (infile.eof()) break;//this is a crappy workaround to exit before extra loop after eof is encountered
 
 			//split on whitespace
 			foovector = split(foo);
 
 			//extract population identifier from first column
 			NewPopID = foovector[0];
+			IndivPerPop.push_back(foovector[0]); //add the pop ID to a list to calc pop sizes later
 			
 		}
 		else if (IsNewPop == "yes") IsNewPop = "no"; //reset it to get a new line unless it is a new allele
 	
+		
 		//determine whether the current line belongs to the current population, or is the first from a new population
 		if (NewPopID == OldPopID)
 		{
@@ -303,6 +322,7 @@ int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<s
 			{
 				//get the current allele
 				NewAllele = foovector[ActiveColumnIDList[i]];
+				AllAlleles.push_back(NewAllele); //add the allele to the list of all alleles
 								
 				//get the name of the current locus
 				CurrLocusName = ActiveLociNameList[i];
@@ -398,6 +418,7 @@ int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<s
 		}
 	}
 
+
 	//process the list of alleles for the very last population, eliminate redundancies and missing data
 	vector<std::string>().swap(TempList); //clear TempList
 	for (q=0;q<ActiveAlleleList.size();q++)
@@ -414,7 +435,7 @@ int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<s
 
 	//correct the length of the main list because the first item ends up empty
 	ActiveAlleleByPopList.erase( ActiveAlleleByPopList.begin() );
-	
+
 	
 	//ActiveAlleleByPopList and FullAccessionNameList references have now been completely updated
 	return 0;
@@ -431,7 +452,7 @@ int MyReduceToRef(vector<vector<vector<std::string> > > AllAlleleByPopList, vect
 	ActiveAlleleByPopList.resize(AllAlleleByPopList.size());
 	TargetAlleleByPopList.resize(AllAlleleByPopList.size());
 	
-	//resize level 2 of vectors, they contain the number of loci in ReferenceOrTargetKey
+	//reserve level 2 of vectors, they contain the number of loci in ReferenceOrTargetKey
 	r = std::count(ReferenceOrTargetKey.begin(), ReferenceOrTargetKey.end(), 0);
 	t = std::count(ReferenceOrTargetKey.begin(), ReferenceOrTargetKey.end(), 1);
 	for (i=0;i<AllAlleleByPopList.size();++i)
@@ -868,6 +889,160 @@ bool fileExists(const char *fileName)
     return infile.good();
 }
 
+vector<std::string> MyRemoveTargetAlleles(vector<std::string> AllAlleles, vector<int> AllColumnIDList, vector<int> TargetColumnIDList)
+{
+	int checker, j;
+	int i=0;
+	vector<std::string> AllRefAlleles;
+	while (i<AllAlleles.size())
+	{
+		j=0;
+		while (j<AllColumnIDList.size()) //this routine follows along, mapping column ids to target or, implicitly, reference
+		{
+			checker = AllColumnIDList[j];		
+			if(std::find(TargetColumnIDList.begin(), TargetColumnIDList.end(), checker) != TargetColumnIDList.end()) 
+			{
+				// TargetColumnIDList contains checker
+				++j;
+				++i;
+			} 
+			else 
+			{
+				//TargetColumnIDList does not contain checker
+				AllRefAlleles.push_back(AllAlleles[i]);
+				++j;
+				++i;
+			}
+		}
+	}
+	return AllRefAlleles;
+}	
+
+//places a continuous string of alleles into a 2d vector with samples as rows
+void MyMakeRefAllelesIntoRows(vector<std::string> AllRefAlleles, vector<std::string> ActiveLociNameList, vector<vector<std::string> >& RefAllelesIntoRows)
+{
+	int j; //counts items per row
+	int i=0, k=0; //k is the row number
+	while (i<AllRefAlleles.size())
+	{
+		j=0;
+		while (j<ActiveLociNameList.size()) //keeps track of the number of alleles traversed before setting the next row
+		{
+			RefAllelesIntoRows[k][j] = AllRefAlleles[i];
+			++i;
+			++j;
+		}
+		++k;
+	}
+}	
+
+//remove columns of data to make 2d vector of alleles by locus 
+void MyMakeRefAllelesByLocus(vector<vector<std::string> > RefAllelesIntoRows, vector<string> ActiveLociNameList, vector<std::pair<std::string, vector<std::string> > >& RefAllelesByLocus)
+{
+	vector<std::pair<std::string, vector<std::string> > > lola;
+	std::pair<std::string, vector<std::string> > la; //locus name, allele list pair
+	
+	int i, j, locindex, k;
+	std::string locname, b;
+	vector<std::string> foo;
+	for (i=0;i<ActiveLociNameList.size();++i)
+	{
+		locname = ActiveLociNameList[i];
+		//test whether the list of locus names/alleles already contains this locus
+		locindex = -1; //default value will cause an error if not explicitly set
+		for (j=0;j<lola.size();++j)
+		{
+			b = lola[j].first;
+			if (locname == b) //there is already data for that locus
+			{
+				locindex = j;
+			}
+		}
+		if (locindex == -1)  //locname not found, add a pair
+		{
+			locindex = lola.size(); 
+			lola.push_back(la);//add an empty pair onto the vector of loci
+			lola[locindex].first = locname;
+		}
+		
+		//add the column of data defined by locname to the appropriate pair.second, defined by locindex in lola
+		for (k=0;k<RefAllelesIntoRows.size();++k)
+		{
+			b = RefAllelesIntoRows[k][i];
+			if (b != "9999") lola[locindex].second.push_back(b); //ignore missing data
+		}
+	}
+	
+	//update RefAllelesByLocus
+	RefAllelesByLocus = lola;
+
+	//print out each locus name followed by all the alleles found within it
+	/*for (i=0;i<lola.size();++i)
+	{
+		cout << lola[i].first << "\n";
+		foo = lola[i].second;
+		for (j=0;j<foo.size();++j)
+		{
+			cout << " " << foo[j];
+		}
+		cout << "\n";
+	}
+	*/
+}
+
+//calculates allele frequencies for all alleles at all loci, updates vector of struct Alfreq, which contains the relational data
+void MyCalculateAlleleFrequencies(vector<std::pair<std::string, vector<std::string> > > RefAllelesByLocus, vector<Alfreq>& AlleleFrequencies)
+{
+	int i, j, NumAlleles, z;
+	double freq;
+	std::string b;
+	vector<std::string> AllAlleles;
+	vector<std::string> UniqAlleles;
+	set<std::string> AlleleSet;
+
+	Alfreq laf; //locusname, allelenames, frequencies
+	//vector<vector<double> > freqvec(RefAllelesByLocus.size()); //to set size of struct frequencies
+	//laf.frequencies = freqvec;
+	static const struct Alfreq emptylaf; //this will be used to zero struct between loops
+	
+	for (i=0;i<RefAllelesByLocus.size();++i)
+	{
+		//empty containers
+		laf = emptylaf;
+		vector<std::string>().swap(UniqAlleles); //clear UniqAlleles
+		AlleleSet.clear(); //clear AlleleSet
+		
+		//get locus name, add to struct
+		b = RefAllelesByLocus[i].first;
+		laf.locusname = b;
+		//cout << laf.locusname << "\n";
+		
+		//compress list of all alleles at this locus into unique alleles
+		AllAlleles = RefAllelesByLocus[i].second; //get the vector of all alleles at locus i
+		for (j=0;j<AllAlleles.size();++j) 
+		{
+			AlleleSet.insert( AllAlleles[j] ); //filter out redundant alleles by dumping the vector into a set
+		}
+		UniqAlleles.assign(AlleleSet.begin(), AlleleSet.end()); //assign the unique alleles to a vector
+		
+		//for each allele in UniqAlleles count the number of occurrences in AllAlleles, calc frequency, add allele name and freq to struct
+		for (j=0;j<UniqAlleles.size();++j)
+		{
+			b = UniqAlleles[j];
+			laf.allelenames.push_back(b); //add allele name to struct
+			z = count(AllAlleles.begin(), AllAlleles.end(), b);
+			freq = double(z)/double(AllAlleles.size());
+			laf.frequencies.push_back(freq); //add allele frequency to struct
+			
+			//cout << " b="<< b<<" z="<<z<<"\n";
+			//cout << " laf.frequencies["<<j<<"]="<<laf.frequencies[j]<<"\n";
+		}
+		
+		AlleleFrequencies.push_back(laf);
+	}
+}
+
+
 /***************MAIN*****************/
 
 int main( int argc, char* argv[] )
@@ -882,11 +1057,13 @@ int main( int argc, char* argv[] )
 	char* OutFilePath = argv[7];
 	char* SumFilePath = NULL;
 	char* KerFilePath = NULL;
+	char* IdealFilePath = NULL;
 	
 	//declare variables
-	int i, j, k, l;
+	int i, j, k, l, b;
 	string DoSummary = "no"; //switch to turn on summary function
 	string Kernel = "no"; //switch to include a mandatory set in the core
+	string Ideal = "no"; //switch to compute the ideal core, using A* algorithm
 	vector<std::string> KernelAccessionList;
 	vector<std::string> BadFiles;
 	string bf;
@@ -898,12 +1075,6 @@ int main( int argc, char* argv[] )
     	{
         	DoSummary = "yes";
         	SumFilePath = argv[i+1];
-			if (fileExists(SumFilePath) == 0) 
-			{
-				bf = "SumFilePath = ";
-				bf += SumFilePath;
-				BadFiles.push_back(bf);
-			}
 		} 
 		
 		if ( string(argv[i]) == "-k" ) 
@@ -911,13 +1082,21 @@ int main( int argc, char* argv[] )
         	Kernel = "yes";
         	KerFilePath = argv[i+1];
         	KernelAccessionList = MySetKernel(KerFilePath);
+			//verify that specified input file actually exists
 			if (fileExists(KerFilePath) == 0) 
 			{
 				bf = "KerFilePath = ";
 				bf += KerFilePath;
 				BadFiles.push_back(bf);
 			}
-		} 
+		}
+		
+		if ( string(argv[i]) == "-b" ) 
+    	{
+        	Ideal = "yes";
+        	IdealFilePath = argv[i+1];
+		}
+ 
 	}
 	
 	//test whether all files specified on the command line exist
@@ -973,9 +1152,11 @@ int main( int argc, char* argv[] )
 	vector<std::string> TargetLociNameList;
 	vector<vector<int> > ColKeyToAllAllelesByPopList;
 	vector<int> ReferenceOrTargetKey;
+	vector<int> PloidyList;
+	vector<std::string> UniqLociNamesList;
 
 	
-	MyProcessVarFile(VarFilePath, AllColumnIDList, AllLociNameList, ActiveColumnIDList, ActiveLociNameList, TargetColumnIDList, TargetLociNameList, ColKeyToAllAllelesByPopList, ReferenceOrTargetKey ); 
+	MyProcessVarFile(VarFilePath, AllColumnIDList, AllLociNameList, ActiveColumnIDList, ActiveLociNameList, TargetColumnIDList, TargetLociNameList, ColKeyToAllAllelesByPopList, ReferenceOrTargetKey, PloidyList, UniqLociNamesList ); 
 	//all but first variable above are updated as references in MyProcessVarFile
 
 		//Print out ActiveColumnIDList and ActiveLociNameList
@@ -1014,8 +1195,10 @@ int main( int argc, char* argv[] )
 	vector<vector<vector<std::string> > > AllAlleleByPopList; //structure of this 3D vector is:
 	// { { {pop1,loc1 alleles},{pop1,loc2 alleles},...}, { {pop2,loc1 alleles},{pop2,loc2 alleles},...} } }
 	vector<std::string> FullAccessionNameList;
-	
-	MyProcessDatFile(DatFilePath, AllColumnIDList, AllLociNameList, AllAlleleByPopList, FullAccessionNameList);
+	vector<std::string> IndivPerPop;
+	vector<std::string> AllAlleles;
+
+	MyProcessDatFile(DatFilePath, AllColumnIDList, AllLociNameList, AllAlleleByPopList, FullAccessionNameList, IndivPerPop, AllAlleles);
 	//latter 3 variables updated as reference
 	
 		/*
@@ -1048,7 +1231,6 @@ int main( int argc, char* argv[] )
 	//sort AllAlleleByPopList into reference and target loci lists
 	vector<vector<vector<std::string> > > ActiveAlleleByPopList; 
 	vector<vector<vector<std::string> > > TargetAlleleByPopList; 
-	//reference
 	MyReduceToRef(AllAlleleByPopList, ReferenceOrTargetKey, ActiveAlleleByPopList, TargetAlleleByPopList); //latter 2 variables updated as reference
 			
 		/*	
@@ -1091,65 +1273,6 @@ int main( int argc, char* argv[] )
 		*/
 
 	
-	
-/*	THIS IS THE OLD ROUTINE, WHICH DIDN'T ALLOW POLYPLOIDY AND RAN THROUGH MYPROCESSDATFILE TWICE (ONCE FOR REFERENCE, ONCE FOR TARGET)
-
-	//.dat file, active loci
-	vector<vector<vector<std::string> > > ActiveAlleleByPopList; //structure of this 3D vector is:
-	// { { {pop1,loc1 alleles},{pop1,loc2 alleles},...}, { {pop2,loc1 alleles},{pop2,loc2 alleles},...} } }
-	vector<std::string> FullAccessionNameList;
-	
-	MyProcessDatFile(DatFilePath, ActiveColumnIDList, ActiveLociNameList, ActiveAlleleByPopList, FullAccessionNameList);
-	//MyProcessDatFileII(DatFilePath, ActiveColumnIDList, ActiveLociNameList, ActiveAlleleByPopList, FullAccessionNameList);
-	//latter two variables above are updated as references
-		
-		//Print out FullAccessionNameList
-		cout << "\n\nPopulation names\n";
-		for (i=0; i<FullAccessionNameList.size();i++) cout << FullAccessionNameList[i] << "\n";
-		
-		//Print out lists of unique active alleles from ActiveAlleleByPopList
-		cout << "ActiveAlleleByPopList:\n";
-		for (i=0; i<ActiveAlleleByPopList.size() ;i++)
-		{
-			cout << "Population " << i << "\n";
-			for (j=0;j<ActiveAlleleByPopList[i].size();j++)
-			{
-				cout << "Locus " << j << "\n";
-				for (k=0;k<ActiveAlleleByPopList[i][j].size();k++)
-				{
-					cout << ActiveAlleleByPopList[i][j][k] << ",";
-				}
-				cout << "\n";
-			}
-		
-		}
-	
-	//.dat file, target loci
-	vector<vector<vector<std::string> > > TargetAlleleByPopList; //structure of this 3D vector is:
-	// { { {pop1,loc1 alleles},{pop1,loc2 alleles},...}, { {pop2,loc1 alleles},{pop2,loc2 alleles},...} } }
-	vector<std::string> TargetAccessionNameList;
-	
-	MyProcessDatFile(DatFilePath, TargetColumnIDList, TargetLociNameList, TargetAlleleByPopList, TargetAccessionNameList);
-	//latter two variables above are updated as references. TargetAccessionNameList is never used,
-	//just created here and sent as a dummy so the function doesn't update FullAccessionNameList
-		
-		//Print out lists of unique target alleles from TargetAlleleByPopList
-		cout << "TargetAlleleByPopList:\n";
-		for (i=0; i<TargetAlleleByPopList.size() ;i++)
-		{
-			cout << "Population " << i << "\n";
-			for (j=0;j<TargetAlleleByPopList[i].size();j++)
-			{
-				cout << "Locus " << j << "\n";
-				for (k=0;k<TargetAlleleByPopList[i][j].size();k++)
-				{
-					cout << TargetAlleleByPopList[i][j][k] << ",";
-				}
-				cout << "\n";
-			}
-		
-		}
-*/		
 		
 
 
@@ -1159,6 +1282,54 @@ int main( int argc, char* argv[] )
 	
 	//get number of loci
 	int NumLoci = ActiveAlleleByPopList[1].size();
+	
+	//calculate population sizes
+	vector<int> PopSizes;
+	for (i=0;i<FullAccessionNameList.size();++i)
+	{
+		bf = FullAccessionNameList[i];
+		b = std::count (IndivPerPop.begin(), IndivPerPop.end(), bf);
+		PopSizes.push_back(b); //synchronized with FullAccessionNameList
+		//cout << "b="<<b<<"\n";	
+	}
+	
+	//calculate allele frequencies
+	
+	//1. remove target alleles from AllAlleles
+	vector<std::string> AllRefAlleles = MyRemoveTargetAlleles(AllAlleles, AllColumnIDList, TargetColumnIDList);
+	
+	//2. put AllRefAlleles into a 2d vector, samples are rows
+	vector<vector<std::string> > RefAllelesIntoRows(IndivPerPop.size(), vector<std::string> ( ActiveLociNameList.size() ));
+	MyMakeRefAllelesIntoRows(AllRefAlleles, ActiveLociNameList, RefAllelesIntoRows);
+	
+	//3. extract alleles into vector of pairs (ignores missing data 9999)
+	vector<std::pair<std::string, vector<std::string> > > RefAllelesByLocus; // first = locus name, second = vector of all alleles present, updated as reference below
+	MyMakeRefAllelesByLocus(RefAllelesIntoRows, ActiveLociNameList, RefAllelesByLocus);
+	
+	//4. calculate allele frequencies, finally (ignores missing data 9999)
+	vector<Alfreq> AlleleFrequencies;//(RefAllelesByLocus.size());  //declare vector of struct Alfreq
+	MyCalculateAlleleFrequencies(RefAllelesByLocus, AlleleFrequencies);
+	
+	/*
+	//print out structs containing allele frequencies
+	Alfreq laf;
+	vector<std::string> anames;
+	vector<double> frqs;
+	for (i=0;i<AlleleFrequencies.size();++i)
+	{
+		cout << AlleleFrequencies[i].locusname << "\n";
+		
+		laf = AlleleFrequencies[i];
+		anames = AlleleFrequencies[i].allelenames;
+		frqs = AlleleFrequencies[i].frequencies;
+		for (j=0;j<anames.size();++j)
+		{
+			cout << " " << anames[j];
+			cout << " " << frqs[j] << "\n";
+		}
+	}
+	*/
+	
 	
 	//from list of all accession names, generate an index that is used later to locate alleles belonging to specific accessions
 	vector<int> AccessionNameList;
@@ -1229,9 +1400,16 @@ int main( int argc, char* argv[] )
     cout << "\nTargetMaxAllelesList:\n";
 	for (i=0; i<TargetMaxAllelesList.size(); i++) cout << TargetMaxAllelesList[i] << ",\n";
 	*/
-		
 	
-
+	
+	//TEST A*
+	if (Ideal == "yes")
+	{
+		cout << "Beginning A* search...\n";
+		
+		aStar(ActiveAlleleByPopList, ActiveMaxAllelesList, UniqLociNamesList, ReferenceOrTargetKey, FullAccessionNameList, PloidyList, PopSizes, AlleleFrequencies);
+	}	
+	
 	//COMMENCE M+
 	
 	//set up variables for monitoring progress
@@ -1713,6 +1891,7 @@ int main( int argc, char* argv[] )
 		const char* RecoveryFilePath = rfp.c_str();
 		remove(RecoveryFilePath);
 	}
+	
 	
 	//stop the clock
 	time (&end);
