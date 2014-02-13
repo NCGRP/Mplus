@@ -602,12 +602,8 @@ vector<Node> SortedCostNodeList::Gets() {return s;}
 
 
 //A*
-int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlleleByPopList, vector<int> ActiveMaxAllelesList, vector<std::string> UniqLociNamesList, vector<int> ReferenceOrTargetKey, vector<std::string> FullAccessionNameList, vector<int> PloidyList, vector<int> PopSizes, vector<Alfreq> AlleleFrequencies)
+int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlleleByPopList, vector<int> ActiveMaxAllelesList, vector<std::string> UniqLociNamesList, vector<int> ReferenceOrTargetKey, vector<std::string> FullAccessionNameList, vector<int> PloidyList, vector<int> PopSizes, vector<Alfreq> AlleleFrequencies, int parallelism_enabled)
 {
-	//compile as parallel or not?
-	int parallelism_enabled = 1; //0=no, not 0 = yes
-
-
 	//SET UP
 	int i;
 	

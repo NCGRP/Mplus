@@ -1,4 +1,4 @@
-To compile:  g++ m+.cpp -o m+ -fopenmp
+To compile:  use "make"
 Usage: m+ varfile datfile mincoresize maxcoresize samplingfreq reps outputfile
 where, 
 varfile = path to MSTRAT .var file with unix line breaks
@@ -14,7 +14,9 @@ outputfile = path to output
 Options:
 -s summaryfile = compute summary statistics and write to an output file
           with the path summaryfile
+-b idealcorefile = compute the minimum set of accessions necessary to retain all variation, i.e.
+		  the "ideal" or "best" core, write output to bestcorefile.  This option ignores the kernel file.
 -k kernelfile = use an MSTRAT .ker file to specify mandatory members of the 
           core.  The number of included accessions must be less than or equal to mincoresize.
 
-example: ./m+ ./beet.var ./beet.dat 3 28 2 3 ./beetout.txt -s ./beetsum.txt -k beet.ker
+example: ./m+ ./beet.var ./beet.dat 3 28 2 3 ./beetout.txt -s ./beetsum.txt -b beetideal.txt -k beet.ker

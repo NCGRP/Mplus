@@ -1405,24 +1405,20 @@ int main( int argc, char* argv[] )
 	//PERFORM A*
 	if (Ideal == "yes")
 	{
-		cout << "Beginning A* search...\n";
-		
+		int parallelism_enabled = 0; //0=no, not 0 = yes
+		if (parallelism_enabled == 0) cout << "Beginning serial A* search...\n\n";
+		else cout << "Beginning parallel A* search...\n\n";
+				
 		//start the clock
 		time_t start1,end1;
 		time (&start1);
 
-
-	//int parallelism_enabled = 1; //0=no, not 0 = yes
-	//#pragma omp parallel if(parallelism_enabled) 
-	//{
-		aStar(IdealFilePath, ActiveAlleleByPopList, ActiveMaxAllelesList, UniqLociNamesList, ReferenceOrTargetKey, FullAccessionNameList, PloidyList, PopSizes, AlleleFrequencies);
-	//}
+	aStar(IdealFilePath, ActiveAlleleByPopList, ActiveMaxAllelesList, UniqLociNamesList, ReferenceOrTargetKey, FullAccessionNameList, PloidyList, PopSizes, AlleleFrequencies, parallelism_enabled);
 		
 		//stop the clock
 		time (&end1);
 		double dif = difftime (end1,start1);
 		cout << "\nA* search complete.  Elapsed time = "<< dif << " seconds.\n\n";
-
 	}	
 	
 	
@@ -1451,13 +1447,14 @@ int main( int argc, char* argv[] )
 		
 	
 	
-	cout << "Beginning M+ search...\n";
 
 
 	
 	//compile as parallel or not?
 	int parallelism_enabled = 1; //0=no, not 0 = yes
-	
+	if (parallelism_enabled == 0) cout << "Beginning serial M+ search...\n\n";
+	else cout << "Beginning parallel M+ search...\n\n";
+
 	#pragma omp parallel if(parallelism_enabled) 
 	{		
 		int r, nr, RandAcc, b, row, bsc, plateau; //r = core size, nr = controller to repeat NumReplicates times

@@ -158,4 +158,4 @@ void printAllNodes(std::vector<Node> AllNodes);
 
 
 /***************FUNCTIONS IN EXTERNAL FILES*****************/
-int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAllelesByPopList, std::vector<int> ActiveMaxAllelesList, std::vector<std::string> UniqLociNamesList, std::vector<int> ReferenceOrTargetKey, vector<std::string> FullAccessionNameList, vector<int> PloidyList, vector<int> PopSizes, vector<Alfreq> AlleleFrequencies);
+int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAllelesByPopList, std::vector<int> ActiveMaxAllelesList, std::vector<std::string> UniqLociNamesList, std::vector<int> ReferenceOrTargetKey, vector<std::string> FullAccessionNameList, vector<int> PloidyList, vector<int> PopSizes, vector<Alfreq> AlleleFrequencies, int parallelism_enabled);
