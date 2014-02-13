@@ -52,8 +52,8 @@ class Node
 		//void SetParent(Node u);
 		void SetParent(std::string u);
 		void SetPopSize(int w);
-		void SetMinFreq(double t);
-		void SetMeanFreq(double t);
+		//void SetMinFreq(double t);
+		//void SetMeanFreq(double t);
 		
 		//get functions
 		double Getf0(), Getg(), Geth0(), Geta0(), Geta1(), Geta2();
@@ -63,7 +63,7 @@ class Node
 		vector<int> GetAlleleCounts();
 		vector<vector<string> > GetSetOfAlleles();
 		int GetPopSize();
-		double GetMinFreq(), GetMeanFreq();
+		//double GetMinFreq(), GetMeanFreq();
 		
 		//special functions
 		// declare a sort functor nested within Node, old version
@@ -118,8 +118,8 @@ class Node
 		vector<int> AlleleCounts;
 		std::string Parent;
 		int PopSize;
-		double MinFreq; //frequency of rarest allele
-		double MeanFreq; //mean allele frequency
+		//double MinFreq; //frequency of rarest allele
+		//double MeanFreq; //mean allele frequency
 
 };
 
@@ -158,4 +158,4 @@ void printAllNodes(std::vector<Node> AllNodes);
 
 
 /***************FUNCTIONS IN EXTERNAL FILES*****************/
-int aStar (vector<vector<vector<std::string> > > ActiveAllelesByPopList, std::vector<int> ActiveMaxAllelesList, std::vector<std::string> UniqLociNamesList, std::vector<int> ReferenceOrTargetKey, vector<std::string> FullAccessionNameList, vector<int> PloidyList, vector<int> PopSizes, vector<Alfreq> AlleleFrequencies);
+int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAllelesByPopList, std::vector<int> ActiveMaxAllelesList, std::vector<std::string> UniqLociNamesList, std::vector<int> ReferenceOrTargetKey, vector<std::string> FullAccessionNameList, vector<int> PloidyList, vector<int> PopSizes, vector<Alfreq> AlleleFrequencies);

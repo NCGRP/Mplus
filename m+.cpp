@@ -1402,15 +1402,32 @@ int main( int argc, char* argv[] )
 	*/
 	
 	
-	//TEST A*
+	//PERFORM A*
 	if (Ideal == "yes")
 	{
 		cout << "Beginning A* search...\n";
 		
-		aStar(ActiveAlleleByPopList, ActiveMaxAllelesList, UniqLociNamesList, ReferenceOrTargetKey, FullAccessionNameList, PloidyList, PopSizes, AlleleFrequencies);
+		//start the clock
+		time_t start1,end1;
+		time (&start1);
+
+
+	//int parallelism_enabled = 1; //0=no, not 0 = yes
+	//#pragma omp parallel if(parallelism_enabled) 
+	//{
+		aStar(IdealFilePath, ActiveAlleleByPopList, ActiveMaxAllelesList, UniqLociNamesList, ReferenceOrTargetKey, FullAccessionNameList, PloidyList, PopSizes, AlleleFrequencies);
+	//}
+		
+		//stop the clock
+		time (&end1);
+		double dif = difftime (end1,start1);
+		cout << "\nA* search complete.  Elapsed time = "<< dif << " seconds.\n\n";
+
 	}	
 	
-	//COMMENCE M+
+	
+	
+	//PERFORM M+
 	
 	//set up variables for monitoring progress
 	int percent; //percent of analysis completed
@@ -1422,7 +1439,7 @@ int main( int argc, char* argv[] )
 	{
 		for (int j=0;j<NumReplicates;j++)
 		{
-		l++;
+			l++;
 		}
 	}
 		
@@ -1434,7 +1451,7 @@ int main( int argc, char* argv[] )
 		
 	
 	
-	cout << "Optimizing...\n";
+	cout << "Beginning M+ search...\n";
 
 
 	
@@ -1896,7 +1913,7 @@ int main( int argc, char* argv[] )
 	//stop the clock
 	time (&end);
 	double dif = difftime (end,start);
-	cout << "\nElapsed time = "<< dif << " seconds.\n\n";
+	cout << "\nM+ search complete.  Elapsed time = "<< dif << " seconds.\n\n";
 
 
 

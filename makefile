@@ -5,8 +5,7 @@ m+.o: m+.cpp m+.hpp
 	g++ -c m+.cpp -fopenmp
 
 aStar.o: aStar.cpp m+.hpp
-	g++ -c aStar.cpp
+	g++ -c aStar.cpp -fopenmp
 
-	
 clean:
 	rm *.o
