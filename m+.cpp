@@ -1405,7 +1405,7 @@ int main( int argc, char* argv[] )
 	//PERFORM A*
 	if (Ideal == "yes")
 	{
-		int parallelism_enabled = 0; //0=no, not 0 = yes
+		int parallelism_enabled = 1; //0=no, not 0 = yes
 		if (parallelism_enabled == 0) cout << "Beginning serial A* search...\n\n";
 		else cout << "Beginning parallel A* search...\n\n";
 				
