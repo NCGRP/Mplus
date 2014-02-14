@@ -136,7 +136,7 @@ class SortedCostNodeList
 		void push(Node); //place a new Node on list, sort by cost (f0), then by a0, a1, a2 to break ties
 		Node pop(); //return the Node with the lowest cost
 		vector<Node> Gets(); //return the sorted vector of Nodes, s
-	
+		void pushs(vector<Node>); //place a vector of updated Nodes on list, sort as in ::push
 	protected:
 
 };
