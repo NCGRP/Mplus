@@ -761,7 +761,7 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 				ParentPath = MyReconstructPath(node_current, AllNodes);
 				ParentPath.push_back(node_current.GetAccName());
 				std::sort(ParentPath.begin(), ParentPath.end());
-				cout << "The ideal core set contains "<<ParentPath.size()<<" accessions.\n";
+				cout << "\nThe ideal core set contains "<<ParentPath.size()<<" accessions.\n";
 				cout << "One ideal core = ";
 				for (i=0;i<ParentPath.size();++i) cout << ParentPath[i] << ",";
 				cout << "\n";

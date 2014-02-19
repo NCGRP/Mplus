@@ -263,6 +263,25 @@ char * MyBigRead(char* DatFilePath)
 	return buffer;
 }
 
+//adds an allele to the appropriate locus in the ActiveAlleleList
+void MyUpdateActiveAlleleList(vector<vector<std::string> >& ActiveAlleleList, int CurrItemIndex, std::string NewAllele) //updates ActiveAlleleList by reference
+{	
+	vector<std::string> OldAlleles;
+	
+	//add to the current array being built or to the appropriate existing array
+	OldAlleles = ActiveAlleleList[CurrItemIndex]; //pull out the list of alleles currently held for this locus
+	OldAlleles.push_back (NewAllele); //add the new allele to the existing list of alleles for the current locus
+	ActiveAlleleList[CurrItemIndex] = OldAlleles; //update ActiveAlleleList by reference
+	
+	/*cout << "OldAlleles\n";
+	for (j=0;j<OldAlleles.size();j++)
+	{
+		cout << OldAlleles[j] << ",";
+	}
+	cout << "\n";
+	*/
+}
+
 int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<std::string> ActiveLociNameList, vector<vector<vector<std::string> > >& ActiveAlleleByPopList, vector<std::string>& FullAccessionNameList, vector<std::string>& IndivPerPop, vector<std::string>& AllAlleles)
 {
 
@@ -287,6 +306,8 @@ int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<s
     vector<std::string> FilteredData;
     vector<std::string> ListToFilter;
     std::string IsNewPop = "no";
+    vector<std::string>::iterator it;
+
 
 
 	//read in the dat file line by line	
@@ -322,6 +343,7 @@ int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<s
 			{
 				//get the current allele
 				NewAllele = foovector[ActiveColumnIDList[i]];
+				
 				AllAlleles.push_back(NewAllele); //add the allele to the list of all alleles
 								
 				//get the name of the current locus
@@ -334,37 +356,30 @@ int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<s
 				*/
 				
 				//test whether you already have a list item for this locus, 
-				//note this works for both building the initial list of arrays (using the first part of "or") or adding to the existing list of arrays (after "or")
 				//count command tests whether CurrLocusName appears in LocusNames
-				if (CurrLocusName == OldLocusName || std::count (LocusNames.begin(), LocusNames.end(), CurrLocusName) >= 1 )
+				it = std::find(LocusNames.begin(), LocusNames.end(), CurrLocusName);
+				if (it != LocusNames.end()) //you have found a match, convert iterator to index, update
 				{
-					//determine whether you are building the list or adding to it, then figure out what gene you are in
-					if (std::count (LocusNames.begin(), LocusNames.end(), CurrLocusName) >= 1)
-					{
-						for (j=0; j<LocusNames.size(); j++)
-						{
-							if (LocusNames[j] == CurrLocusName)
-							{
-								CurrItemIndex = j;
-								break;	
-							}
-						}
-					
-					}
-					
-					//add to the current array being built or to the appropriate existing array
-					OldAlleles = ActiveAlleleList[CurrItemIndex]; //pull out the list of alleles currently held for this locus
-					OldAlleles.push_back (NewAllele); //add the new allele to the existing list of alleles for the current locus
-					ActiveAlleleList[CurrItemIndex] = OldAlleles; //update ActiveAlleleList
-					
-					/*cout << "OldAlleles\n";
-					for (j=0;j<OldAlleles.size();j++)
-					{
-						cout << OldAlleles[j] << ",";
-					}
-					cout << "\n";
-					*/
+					CurrItemIndex = std::distance(LocusNames.begin(), it); //convert iterator to index
+					MyUpdateActiveAlleleList(ActiveAlleleList, CurrItemIndex, NewAllele); //update ActiveAlleleList with the new allele by reference
 				}
+				
+				/*
+				if ( std::count (LocusNames.begin(), LocusNames.end(), CurrLocusName) >= 1) //you are adding to an existing locus
+				{
+					//figure out what gene you are in, then add NewAllele to the appropriate item in the ActiveAlleleList
+					for (j=0; j<LocusNames.size(); j++)
+					{
+						if (LocusNames[j] == CurrLocusName)
+						{
+							CurrItemIndex = j;
+							break;	
+						}
+					}
+					MyUpdateActiveAlleleList(ActiveAlleleList, CurrItemIndex, NewAllele); //update ActiveAlleleList with the new allele by reference
+				}
+				
+				*/
 				else //it is new locus
 				{
 					//create a new list item, and add current allele to it. other alleles will be added later in first part of 'if'
@@ -375,7 +390,6 @@ int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<s
 					
 					//build a list of the locus names
 					LocusNames.push_back (ActiveLociNameList[i]);
-					
 				}
 				
 				//pass current locus name to old locus name
@@ -1127,10 +1141,6 @@ int main( int argc, char* argv[] )
 	
 	
 	
-	//start the clock
-	time_t start,end;
-	time (&start);
-
 	//print out input variables
 	cout << "Input variables:\n  VarFilePath = " << VarFilePath << "\n";
 	cout << "  DatFilePath = " << DatFilePath << "\n";
@@ -1142,7 +1152,34 @@ int main( int argc, char* argv[] )
 	cout << "  NumReplicates = " << NumReplicates << "\n";
 	cout << "  OutFilePath = " << OutFilePath << "\n";
 	
+	//catch some errors in the command line
+	if (MinCoreSize > MaxCoreSize) 
+	{
+		cout << "ERROR:  The minimum core size ("<<MinCoreSize<<") is greater than the maximum core size.  Please correct the command line arguments.  Quitting...\n\n";
+    	exit (EXIT_FAILURE);
+    }
+    if (MinCoreSize == 1)
+    {
+    	cout << "ERROR:  A minimum core size of 1 is not allowed.  Please correct the command line.  Quitting...\n\n"; 
+		exit (EXIT_FAILURE);
+	}
+    if (KernelAccessionList.size() > MinCoreSize)
+    {
+		cout << "ERROR:  The number of mandatory accessions ("<<KernelAccessionList.size()
+			 <<") is greater than the minimum core size ("<<MinCoreSize
+        	 <<").  Please modify the kernel file or the command line argument.  Quitting...\n\n";
+				exit (EXIT_FAILURE);
+	}
+
+	
+
+	
 	//PROCESS INPUT DATA
+	
+	//start the clock
+	time_t starti,endi;
+	time (&starti);
+
 	//.var file
 	vector<int> AllColumnIDList;
 	vector<std::string> AllLociNameList;
@@ -1280,6 +1317,14 @@ int main( int argc, char* argv[] )
 	//get total number of accessions
 	int NumberOfAccessions = ActiveAlleleByPopList.size();
 	
+	//catch a possible error in the command line
+	if (MaxCoreSize > NumberOfAccessions)
+	{
+		cout << "ERROR:  Maximum core size of "<<MaxCoreSize<< " is greater than the number of accessions.  Please set to a lower value. Quitting...\n\n";
+		exit (EXIT_FAILURE);
+	}
+
+	
 	//get number of loci
 	int NumLoci = ActiveAlleleByPopList[1].size();
 	
@@ -1366,34 +1411,18 @@ int main( int argc, char* argv[] )
 	TargetMaxAllelesList = MyGetMaxs(TargetAlleleByPopList);
 		
 	
-	cout << "\n\n" << "Number of accessions = " << NumberOfAccessions << ", Number of loci = " << NumLoci;
+	//stop the clock
+	time (&endi);
+	double dif = difftime (endi,starti);
+	cout << "Input files processed.  Elapsed time = "<< dif << " seconds.\n\n";
+	
+	cout << "Number of accessions = " << NumberOfAccessions << ", Number of loci = " << NumLoci;
 	if (Kernel == "yes") cout << ", Number of kernel accessions = " << KernelAccessionList.size() << "\n\n";
 	else cout << "\n\n";
 	
 
-	//catch some errors
-	if (MaxCoreSize > NumberOfAccessions)
-	{
-		cout << "ERROR:  Maximum core size of "<<MaxCoreSize<< " is greater than the number of accessions.  Please set to a lower value. Quitting...\n\n";
-		exit (EXIT_FAILURE);
-	}
-	if (MinCoreSize > MaxCoreSize) 
-	{
-		cout << "ERROR:  The minimum core size ("<<MinCoreSize<<") is greater than the maximum core size.  Please correct the command line arguments.  Quitting...\n\n";
-    	exit (EXIT_FAILURE);
-    }
-    if (MinCoreSize == 1)
-    {
-    	cout << "ERROR:  A minimum core size of 1 is not allowed.  Please correct the command line.  Quitting...\n\n"; 
-		exit (EXIT_FAILURE);
-	}
-    if (KernelAccessionList.size() > MinCoreSize)
-    {
-		cout << "ERROR:  The number of mandatory accessions ("<<KernelAccessionList.size()
-			 <<") is greater than the minimum core size ("<<MinCoreSize
-        	 <<").  Please modify the kernel file or the command line argument.  Quitting...\n\n";
-				exit (EXIT_FAILURE);
-	}
+
+
 
     /*cout << "ActiveMaxAllelesList:\n";
 	for (i=0; i<ActiveMaxAllelesList.size(); i++) cout << ActiveMaxAllelesList[i] << ",\n";
@@ -1406,8 +1435,8 @@ int main( int argc, char* argv[] )
 	if (Ideal == "yes")
 	{
 		int parallelism_enabled = 1; //0=no, not 0 = yes
-		if (parallelism_enabled == 0) cout << "Beginning serial A* search...\n\n";
-		else cout << "Beginning parallel A* search...\n\n";
+		if (parallelism_enabled == 0) cout << "\nBeginning serial A* search...\n\n";
+		else cout << "\nBeginning parallel A* search...\n\n";
 				
 		//start the clock
 		time_t start1,end1;
@@ -1424,6 +1453,11 @@ int main( int argc, char* argv[] )
 	
 	
 	//PERFORM M+
+	
+	//start the clock
+	time_t startm,endm;
+	time (&startm);
+
 	
 	//set up variables for monitoring progress
 	int percent; //percent of analysis completed
@@ -1452,8 +1486,8 @@ int main( int argc, char* argv[] )
 	
 	//compile as parallel or not?
 	int parallelism_enabled = 1; //0=no, not 0 = yes
-	if (parallelism_enabled == 0) cout << "Beginning serial M+ search...\n\n";
-	else cout << "Beginning parallel M+ search...\n\n";
+	if (parallelism_enabled == 0) cout << "\nBeginning serial M+ search...\n\n";
+	else cout << "\nBeginning parallel M+ search...\n\n";
 
 	#pragma omp parallel if(parallelism_enabled) 
 	{		
@@ -1908,8 +1942,8 @@ int main( int argc, char* argv[] )
 	
 	
 	//stop the clock
-	time (&end);
-	double dif = difftime (end,start);
+	time (&endm);
+	dif = difftime (endm,startm);
 	cout << "\nM+ search complete.  Elapsed time = "<< dif << " seconds.\n\n";
 
 
