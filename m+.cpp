@@ -679,6 +679,7 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 	vector<std::string> CurrLoc;
 	vector<std::string> ListToFilter;
 	vector<int> Mlist(NumLoci);
+	set<std::string> AlleleSet;
 
 
 	if (NumLoci == 0)
@@ -688,10 +689,11 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 	}
 	else
 	{
+		
+		/*//slow using sort/erase
 		for (i=0;i<NumLoci;i++)
 		{
 			//3. fuse alleles from the same locus into a single array, for all populations in core
-			//vector<std::string>().swap(NewArray); //clear NewArray
 			NewArray.clear();
 			for (j=0;j<CoreSize;j++)
 			{
@@ -699,14 +701,13 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 				NewArray.insert(NewArray.end(), CurrLoc.begin(), CurrLoc.end());
 			}
 			
-			/*for (k=0;k<NewArray.size();k++)
+			for (k=0;k<NewArray.size();k++)
 			{
 				cout << "NewArray["<<k<<"]="<<NewArray[k]<<"\n";
-			}*/
+			}
 			
 			//4. assemble a list of diversity (M) for each locus separately
 			//ListToFilter starts with a sorted list of all unique alleles found at a locus.  If there are no alleles (i.e. all missing data), M is set to 0.  Otherwise, M is set to the number of unique alleles at the locus.
-			//vector<std::string>().swap(ListToFilter); //clear ListToFilter
 			ListToFilter.clear();
 			//remove duplicates
 			ListToFilter = NewArray;
@@ -714,11 +715,11 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 			ListToFilter.erase( std::unique( ListToFilter.begin(), ListToFilter.end() ), ListToFilter.end() );
 
 			
-			/*cout << "Locus "<<i<<"\n";
+			cout << "Locus "<<i<<"\n";
 			for (k=0;k<ListToFilter.size();k++)
 			{
 				cout << "ListToFilter["<<k<<"]="<<ListToFilter[k]<<"\n";
-			}*/
+			}
 
 			if (ListToFilter.size() == 0)
 			{
@@ -729,9 +730,40 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 				M=ListToFilter.size(); //M=the number of alleles present
 			}
 			
-			//Mlist.push_back(M); //Mlist contains number of alleles present at each locus
+			//Mlist contains number of alleles present at each locus
 			Mlist[i] = M;
 		}
+		*/
+		
+		//fast using set
+		for (i=0;i<NumLoci;i++)
+		{
+
+			//3. pass alleles from the same locus into a single set, for all populations in core, to remove redundancies
+			AlleleSet.clear(); //clear AlleleSet
+			for (j=0;j<CoreSize;j++)
+			{
+				CurrLoc = AlleleList[j][i];
+				for (k=0;k<CurrLoc.size();++k)
+				{
+					AlleleSet.insert(CurrLoc[k]); //locus i for all population j
+				}
+			}
+			
+			if (AlleleSet.size() == 0) M=0;
+			else M=AlleleSet.size();
+			
+			Mlist[i] = M;
+		}
+
+		
+		/*for (k=0;k<Mlist.size();++k)
+		{
+			cout << Mlist[k] << ",";
+		}
+		cout << "\n";
+		*/
+		
 		
 		
 		//5. standardize the M values to the maximum possible number of alleles at that locus, 
