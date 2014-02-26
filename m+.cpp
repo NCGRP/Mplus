@@ -15,28 +15,32 @@
 
 
 /*
-To compile:  g++ m+.cpp -o m+ -fopenmp
-Usage: m+ varfile datfile mincoresize maxcoresize samplingfreq reps outputfile
+To compile:  use "make"
+Usage: m+ varfile datfile [-m mincoresize maxcoresize samplingfreq reps outputfile]
+		[-k kernelfile] [-a idealcorefile]
 where, 
-varfile = path to MSTRAT .var file with unix line breaks
-datfile = path to MSTRAT .dat file 
-mincoresize maxcoresize = integers specifying minimum and maximum core size. 
-          Usually mincoresize = 2, maxcoresize = total number of accessions
-samplingfreq = e.g. integer value 5 will cause coresize=2 then coresize=7, then 12, 
-          and so on, to be sampled.
-reps = number of times to repeat the measurement of diversity for a particular core size 
-          before calculating a mean
-outputfile = path to output
+varfile = path to MSTRAT .var file
+datfile = path to MSTRAT .dat file
 
 Options:
--s summaryfile = compute summary statistics and write to an output file
-          with the path summaryfile
--b idealcorefile = compute the minimum set of accessions necessary to retain all variation, i.e.
-		  the "ideal" or "best" core, write output to bestcorefile.  This option ignores the kernel file.
+-m mincoresize maxcoresize samplingfreq reps outputfile = compute the optimal accessions
+		for a given core size using the M+ search algorithm. Arguments are as follows:
+		mincoresize maxcoresize = integers specifying minimum and maximum core size. 
+			Usually mincoresize = 2, maxcoresize = total number of accessions
+		samplingfreq = e.g. integer value 5 will cause coresize=2 then coresize=7, then 12, 
+			and so on, to be sampled.
+		reps = number of replicate core sets to calculate for a particular core size
+		outputfile = path to output
 -k kernelfile = use an MSTRAT .ker file to specify mandatory members of the 
-          core.  The number of included accessions must be less than or equal to mincoresize.
+        core.  The number of mandatory accessions must therefore be less than or equal to 
+        mincoresize.  Option must be used with -m.
+-a idealcorefile = compute the minimum set of accessions necessary to retain all variation,
+		i.e. the "ideal" or "best" core, using the A* search algorithm, write output to 
+		bestcorefile.
 
-example: ./m+ ./beet.var ./beet.dat 3 28 2 3 ./beetout.txt -s ./beetsum.txt -b beetideal.txt -k beet.ker
+Notes:  All input files must have Unix line breaks.
+
+example: ./m+ ./beet.var ./beet.dat -m 3 28 2 3 ./beetout.txt -k beet.ker -a beetideal.txt
 */
 
 
@@ -207,7 +211,7 @@ int MyProcessVarFile(char* VarFilePath, vector<int>& AllColumnIDList, vector<std
 		}
 		
 	}
-	//print out ColKeyToAllAlleleByPopList
+	/*//print out ColKeyToAllAlleleByPopList
 	cout << "ColKeyToAllAlleleByPopList\n";
 	for (i=0;i<ColKeyToAllAlleleByPopList.size();++i)
 	{
@@ -689,52 +693,6 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 	}
 	else
 	{
-		
-		/*//slow using sort/erase
-		for (i=0;i<NumLoci;i++)
-		{
-			//3. fuse alleles from the same locus into a single array, for all populations in core
-			NewArray.clear();
-			for (j=0;j<CoreSize;j++)
-			{
-				CurrLoc = AlleleList[j][i];
-				NewArray.insert(NewArray.end(), CurrLoc.begin(), CurrLoc.end());
-			}
-			
-			for (k=0;k<NewArray.size();k++)
-			{
-				cout << "NewArray["<<k<<"]="<<NewArray[k]<<"\n";
-			}
-			
-			//4. assemble a list of diversity (M) for each locus separately
-			//ListToFilter starts with a sorted list of all unique alleles found at a locus.  If there are no alleles (i.e. all missing data), M is set to 0.  Otherwise, M is set to the number of unique alleles at the locus.
-			ListToFilter.clear();
-			//remove duplicates
-			ListToFilter = NewArray;
-			sort( ListToFilter.begin(), ListToFilter.end() );
-			ListToFilter.erase( std::unique( ListToFilter.begin(), ListToFilter.end() ), ListToFilter.end() );
-
-			
-			cout << "Locus "<<i<<"\n";
-			for (k=0;k<ListToFilter.size();k++)
-			{
-				cout << "ListToFilter["<<k<<"]="<<ListToFilter[k]<<"\n";
-			}
-
-			if (ListToFilter.size() == 0)
-			{
-				M=0;
-			}
-			else
-			{
-				M=ListToFilter.size(); //M=the number of alleles present
-			}
-			
-			//Mlist contains number of alleles present at each locus
-			Mlist[i] = M;
-		}
-		*/
-		
 		//fast using set
 		for (i=0;i<NumLoci;i++)
 		{
@@ -1012,18 +970,19 @@ int main( int argc, char* argv[] )
 	//get mandatory command line arguments
 	char* VarFilePath = argv[1];
 	char* DatFilePath = argv[2];
-	const int MinCoreSize = atoi(argv[3]);
-	const int MaxCoreSize = atoi(argv[4]);
-	const int SamplingFreq = atoi(argv[5]);
-	const int NumReplicates = atoi(argv[6]);
-	char* OutFilePath = argv[7];
-	char* SumFilePath = NULL;
+	
+	//initialize optional command line arguments
+	int MinCoreSize = NULL;
+	int MaxCoreSize = NULL;
+	int SamplingFreq = NULL;
+	int NumReplicates = NULL;
+	char* OutFilePath = NULL;
 	char* KerFilePath = NULL;
 	char* IdealFilePath = NULL;
 	
 	//declare variables
 	int i, j, k, l, b;
-	string DoSummary = "no"; //switch to turn on summary function
+	string DoM = "no"; //switch to perform M+ optimization
 	string Kernel = "no"; //switch to include a mandatory set in the core
 	string Ideal = "no"; //switch to compute the ideal core, using A* algorithm
 	vector<std::string> KernelAccessionList;
@@ -1033,12 +992,16 @@ int main( int argc, char* argv[] )
 	//parse the command line for options
 	for (i=0;i<argc;i++)
 	{
-		if ( string(argv[i]) == "-s" ) 
+		if ( string(argv[i]) == "-m" ) 
     	{
-        	DoSummary = "yes";
-        	SumFilePath = argv[i+1];
-		} 
-		
+        	DoM = "yes";
+        	MinCoreSize = atoi(argv[i+1]);
+			MaxCoreSize = atoi(argv[i+2]);
+			SamplingFreq = atoi(argv[i+3]);
+			NumReplicates = atoi(argv[i+4]);
+			OutFilePath = argv[i+5];
+		}
+
 		if ( string(argv[i]) == "-k" ) 
     	{
         	Kernel = "yes";
@@ -1053,7 +1016,7 @@ int main( int argc, char* argv[] )
 			}
 		}
 		
-		if ( string(argv[i]) == "-b" ) 
+		if ( string(argv[i]) == "-a" ) 
     	{
         	Ideal = "yes";
         	IdealFilePath = argv[i+1];
@@ -1062,7 +1025,6 @@ int main( int argc, char* argv[] )
 	}
 	
 	//test whether all files specified on the command line exist
-	
 	if (fileExists(VarFilePath) == 0) 
 	{
 		bf = "VarFilePath = ";
@@ -1092,13 +1054,25 @@ int main( int argc, char* argv[] )
 	//print out input variables
 	cout << "Input variables:\n  VarFilePath = " << VarFilePath << "\n";
 	cout << "  DatFilePath = " << DatFilePath << "\n";
-	if (KerFilePath != NULL) cout << "  KerFilePath = " << KerFilePath << "\n";
-	if (SumFilePath != NULL) cout << "  SumFilePath = " << SumFilePath << "\n";
-	cout << "  MinCoreSize = " << MinCoreSize << "\n";
-	cout << "  MaxCoreSize = " << MaxCoreSize << "\n";
-	cout << "  SamplingFreq = " << SamplingFreq << "\n";
-	cout << "  NumReplicates = " << NumReplicates << "\n";
-	cout << "  OutFilePath = " << OutFilePath << "\n";
+	if (DoM == "yes")
+	{
+		cout << "  -m invoked:\n";
+		cout << "    MinCoreSize = " << MinCoreSize << "\n";
+		cout << "    MaxCoreSize = " << MaxCoreSize << "\n";
+		cout << "    SamplingFreq = " << SamplingFreq << "\n";
+		cout << "    NumReplicates = " << NumReplicates << "\n";
+		cout << "    OutFilePath = " << OutFilePath << "\n";
+	}
+	if (Kernel == "yes") 
+	{
+		cout << "  -k invoked:\n";
+		cout << "    KerFilePath = " << KerFilePath << "\n";
+	}
+	if (Ideal == "yes")
+	{
+		cout << "  -a invoked:\n";
+		cout << "    IdealFilePath = " << IdealFilePath << "\n";
+	}
 	
 	//catch some errors in the command line
 	if (MinCoreSize > MaxCoreSize) 
@@ -1111,14 +1085,18 @@ int main( int argc, char* argv[] )
     	cout << "ERROR:  A minimum core size of 1 is not allowed.  Please correct the command line.  Quitting...\n\n"; 
 		exit (EXIT_FAILURE);
 	}
+	if (Kernel == "yes" && Ideal == "yes" && DoM == "no")
+	{
+		cout << "ERROR:  A* search cannot be performed with a kernel file.  Please correct the command line.  Quitting...\n\n";
+		exit (EXIT_FAILURE);
+	}
     if (KernelAccessionList.size() > MinCoreSize)
     {
 		cout << "ERROR:  The number of mandatory accessions ("<<KernelAccessionList.size()
 			 <<") is greater than the minimum core size ("<<MinCoreSize
         	 <<").  Please modify the kernel file or the command line argument.  Quitting...\n\n";
-				exit (EXIT_FAILURE);
+			exit (EXIT_FAILURE);
 	}
-
 	
 
 	
@@ -1151,7 +1129,7 @@ int main( int argc, char* argv[] )
 		}
 		else
 		{
-			cout << "\n\nActive Locus	Column\n";
+			cout << "\nActive Locus	Column\n";
 			for (i=0; i < ActiveColumnIDList.size(); i++)
 			{
 				cout << ActiveLociNameList[i] << "\t" << (ActiveColumnIDList[i] + 1) << "\n";
@@ -1428,7 +1406,8 @@ int main( int argc, char* argv[] )
 		time_t start1,end1;
 		time (&start1);
 
-	aStar(IdealFilePath, ActiveAlleleByPopList, ActiveMaxAllelesList, UniqLociNamesList, ReferenceOrTargetKey, FullAccessionNameList, PloidyList, PopSizes, AlleleFrequencies, parallelism_enabled);
+		//run A*
+		aStar(IdealFilePath, ActiveAlleleByPopList, ActiveMaxAllelesList, UniqLociNamesList, ReferenceOrTargetKey, FullAccessionNameList, PloidyList, PopSizes, AlleleFrequencies, parallelism_enabled);
 		
 		//stop the clock
 		time (&end1);
@@ -1439,499 +1418,500 @@ int main( int argc, char* argv[] )
 	
 	
 	//PERFORM M+
-	
-	//start the clock
-	time_t startm,endm;
-	time (&startm);
-
-	
-	//set up variables for monitoring progress
-	int percent; //percent of analysis completed
-	int progindex = 0;  //index to monitor progress, percent = 100*(progindex/l)
-	//below is a stupid way to calculate the number of rows in the output file, value l (which = V1) 
-	//used to monitor progress and as the maximum vector index for shared output vectors
-	l=0;
-	for (i=MinCoreSize;i<MaxCoreSize+1;i=i+SamplingFreq)
+	if (DoM == "yes")
 	{
-		for (int j=0;j<NumReplicates;j++)
+		//start the clock
+		time_t startm,endm;
+		time (&startm);
+
+	
+		//set up variables for monitoring progress
+		int percent; //percent of analysis completed
+		int progindex = 0;  //index to monitor progress, percent = 100*(progindex/l)
+		//below is a stupid way to calculate the number of rows in the output file, value l (which = V1) 
+		//used to monitor progress and as the maximum vector index for shared output vectors
+		l=0;
+		for (i=MinCoreSize;i<MaxCoreSize+1;i=i+SamplingFreq)
 		{
-			l++;
+			for (int j=0;j<NumReplicates;j++)
+			{
+				l++;
+			}
 		}
-	}
 		
 
-	//set up vectors to fill with results
-	double V1 = l; //(MaxCoreSize - MinCoreSize + 1)*NumReplicates; //number of rows in output vectors
-	vector<vector<double> > Results(V1, vector<double>(9)); //will contain numerical results
-	vector<vector<string> > Members(V1); //will contain core set members
+		//set up vectors to fill with results
+		double V1 = l; //(MaxCoreSize - MinCoreSize + 1)*NumReplicates; //number of rows in output vectors
+		vector<vector<double> > Results(V1, vector<double>(9)); //will contain numerical results
+		vector<vector<string> > Members(V1); //will contain core set members
 		
 	
 	
 
 
 	
-	//compile as parallel or not?
-	int parallelism_enabled = 1; //0=no, not 0 = yes
-	if (parallelism_enabled == 0) cout << "\nBeginning serial M+ search...\n\n";
-	else cout << "\nBeginning parallel M+ search...\n\n";
+		//compile as parallel or not?
+		int parallelism_enabled = 1; //0=no, not 0 = yes
+		if (parallelism_enabled == 0) cout << "\nBeginning serial M+ search...\n\n";
+		else cout << "\nBeginning parallel M+ search...\n\n";
 
-	#pragma omp parallel if(parallelism_enabled) 
-	{		
-		int r, nr, RandAcc, b, row, bsc, plateau; //r = core size, nr = controller to repeat NumReplicates times
-									//row = result vector row number, bsc = holds best sub core member, and other indexed accessions
-									//plateau = index of the number of reps in optimization loop with same diversity value
+		#pragma omp parallel if(parallelism_enabled) 
+		{		
+			int r, nr, RandAcc, b, row, bsc, plateau; //r = core size, nr = controller to repeat NumReplicates times
+										//row = result vector row number, bsc = holds best sub core member, and other indexed accessions
+										//plateau = index of the number of reps in optimization loop with same diversity value
 									
-		double RandomActiveDiversity;
-		double AltRandomActiveDiversity;
-		double StartingRandomActiveDiversity;
-		double StartingAltRandomActiveDiversity;
-		double RandomTargetDiversity;
-		double AltRandomTargetDiversity;
-		double StartingDiversity;
-		double TempAltOptimizedActiveDiversity;
-		double AltOptimizedActiveDiversity;
-		double OptimizedTargetDiversity;
-		double AltOptimizedTargetDiversity;
-		double best;
-		double nnew;
-		vector<vector<vector<std::string> > > AlleleList;
-		vector<vector<vector<std::string> > > CoreAlleles;
-		vector<vector<vector<std::string> > > TdTempList;
-		vector<vector<vector<std::string> > > BestSubCoreAlleles;
-		std::string Standardize = "yes";  //a run that mimics the MSTRAT approach can be accomplished by setting Standardize="no", and setting up the var file so that each column in the .dat file is treated as a single locus, rather than two (or more) adjacent columns being treated as a single codominant locus.
-		vector<int> AccessionsInCore;
-		vector<int> AccessionsInSubCore;
-		vector<int> BestSubCore;
-		vector<int> BestSubCoreRevSorted;
-		vector<int> TempList;
-		vector<int> TempList2;
-		vector<int> bestcore;
-		vector<std::string> TempListStr;
+			double RandomActiveDiversity;
+			double AltRandomActiveDiversity;
+			double StartingRandomActiveDiversity;
+			double StartingAltRandomActiveDiversity;
+			double RandomTargetDiversity;
+			double AltRandomTargetDiversity;
+			double StartingDiversity;
+			double TempAltOptimizedActiveDiversity;
+			double AltOptimizedActiveDiversity;
+			double OptimizedTargetDiversity;
+			double AltOptimizedTargetDiversity;
+			double best;
+			double nnew;
+			vector<vector<vector<std::string> > > AlleleList;
+			vector<vector<vector<std::string> > > CoreAlleles;
+			vector<vector<vector<std::string> > > TdTempList;
+			vector<vector<vector<std::string> > > BestSubCoreAlleles;
+			std::string Standardize = "yes";  //a run that mimics the MSTRAT approach can be accomplished by setting Standardize="no", and setting up the var file so that each column in the .dat file is treated as a single locus, rather than two (or more) adjacent columns being treated as a single codominant locus.
+			vector<int> AccessionsInCore;
+			vector<int> AccessionsInSubCore;
+			vector<int> BestSubCore;
+			vector<int> BestSubCoreRevSorted;
+			vector<int> TempList;
+			vector<int> TempList2;
+			vector<int> bestcore;
+			vector<std::string> TempListStr;
 	
-		//seed the random number generator for each thread
-		int tt;
-		tt = (time(NULL));
-		srand ( tt ^ omp_get_thread_num() ); //initialize
+			//seed the random number generator for each thread
+			int tt;
+			tt = (time(NULL));
+			srand ( tt ^ omp_get_thread_num() ); //initialize
 		
-		//set up a recovery file for each thread that saves progress as program runs
-		stringstream ss;
-		ss << OutFilePath << ".t" << omp_get_thread_num() << ".tmp"; 
-		string rfp = ss.str();
-		const char* RecoveryFilePath = rfp.c_str();
-		ofstream RecoveryFile; 
-		RecoveryFile.open(RecoveryFilePath);
-		RecoveryFile.close(); //quick open close done to clear any existing file each time program is run
-		RecoveryFile.open(RecoveryFilePath, ios::out | ios::app); //open file in append mode
-		RecoveryFile << "core size	random active diversity	optimized active diversity	random target diversity	optimized target diversity	alt random active diversity	alt optimized active diversity	alt random target diversity	alt optimized target diversity	core members" << "\n";
-		RecoveryFile.close();
+			//set up a recovery file for each thread that saves progress as program runs
+			stringstream ss;
+			ss << OutFilePath << ".t" << omp_get_thread_num() << ".tmp"; 
+			string rfp = ss.str();
+			const char* RecoveryFilePath = rfp.c_str();
+			ofstream RecoveryFile; 
+			RecoveryFile.open(RecoveryFilePath);
+			RecoveryFile.close(); //quick open close done to clear any existing file each time program is run
+			RecoveryFile.open(RecoveryFilePath, ios::out | ios::app); //open file in append mode
+			RecoveryFile << "core size	random reference diversity	optimized reference diversity	random target diversity	optimized target diversity	alt random reference diversity	alt optimized reference diversity	alt random target diversity	alt optimized target diversity	core members" << "\n";
+			RecoveryFile.close();
 
 
 
-		//do parallelization so that each rep by core size combo can be
-		//handled by a distinct thread.  this involves figuring out the total
-		//number of reps*coresizes taking into account the SamplingFreq
+			//do parallelization so that each rep by core size combo can be
+			//handled by a distinct thread.  this involves figuring out the total
+			//number of reps*coresizes taking into account the SamplingFreq
 
-		int rsteps = 1 + floor( (MaxCoreSize - MinCoreSize) / SamplingFreq ); //number of steps from MinCoreSize to MaxCoreSize
+			int rsteps = 1 + floor( (MaxCoreSize - MinCoreSize) / SamplingFreq ); //number of steps from MinCoreSize to MaxCoreSize
 
-		#pragma omp for
-			for (int rnr = 0; rnr<rsteps*NumReplicates;++rnr)
-			{
-				r = MinCoreSize + ((rnr / NumReplicates) * SamplingFreq); //int rounds to floor
-				nr = rnr % NumReplicates; // modulo
-				
-				
-
-		/*old parallelization, outer loop only, if reinstated, make sure closing braces are corrected too
-		#pragma omp for
-			for (int r=MinCoreSize;r<MaxCoreSize+1;r=r+SamplingFreq)
-			{
-				//cout << "  CoreSize = " << r << "\n";
-
-				for (int nr=0;nr<NumReplicates;nr++)
+			#pragma omp for
+				for (int rnr = 0; rnr<rsteps*NumReplicates;++rnr)
 				{
-		*/		
+					r = MinCoreSize + ((rnr / NumReplicates) * SamplingFreq); //int rounds to floor
+					nr = rnr % NumReplicates; // modulo
+				
+				
 
+			/*old parallelization, outer loop only, if reinstated, make sure closing braces are corrected too
+			#pragma omp for
+				for (int r=MinCoreSize;r<MaxCoreSize+1;r=r+SamplingFreq)
+				{
+					//cout << "  CoreSize = " << r << "\n";
 
-					//cout << "    rep " << nr + 1 << "\n";
-					//develop random starting core set
-					//clear AccessionsInCore and set size
-					AccessionsInCore.clear();
-					AccessionsInCore.resize(r);
-					
-					//add kernel accessions to core, if necessary
-					if (Kernel == "yes")
+					for (int nr=0;nr<NumReplicates;nr++)
 					{
+			*/		
+
+
+						//cout << "    rep " << nr + 1 << "\n";
+						//develop random starting core set
+						//clear AccessionsInCore and set size
+						AccessionsInCore.clear();
+						AccessionsInCore.resize(r);
+					
+						//add kernel accessions to core, if necessary
+						if (Kernel == "yes")
+						{
+							for (int i=0;i<KernelAccessionIndex.size();i++)
+							{
+								AccessionsInCore[i] = KernelAccessionIndex[i];
+							}
+						}
+
+						//clear TempList and set size					
+						TempList.clear();
+						TempList.resize( AccessionNameList.size() );
+						//vector<int>().swap(AccessionsInCore); //clear AccessionsInCore
+						//vector<int>().swap(TempList); //clear TempList
+					
+						//set list of available accessions in TempList, by erasing those already in the core
+						TempList = AccessionNameList;
+						//expunge the kernel accessions, so they are not available for random addition below
+						//KernelAccessionIndex has been reverse sorted so you don't go outside range after automatic resize by .erase
 						for (int i=0;i<KernelAccessionIndex.size();i++)
 						{
-							AccessionsInCore[i] = KernelAccessionIndex[i];
+							b = KernelAccessionIndex[i];
+							TempList.erase(TempList.begin()+b);
 						}
-					}
-
-					//clear TempList and set size					
-					TempList.clear();
-					TempList.resize( AccessionNameList.size() );
-					//vector<int>().swap(AccessionsInCore); //clear AccessionsInCore
-					//vector<int>().swap(TempList); //clear TempList
-					
-					//set list of available accessions in TempList, by erasing those already in the core
-					TempList = AccessionNameList;
-					//expunge the kernel accessions, so they are not available for random addition below
-					//KernelAccessionIndex has been reverse sorted so you don't go outside range after automatic resize by .erase
-					for (int i=0;i<KernelAccessionIndex.size();i++)
-					{
-						b = KernelAccessionIndex[i];
-						TempList.erase(TempList.begin()+b);
-					}
 				
-					//randomly add accessions until r accessions are in the core. if there is a kernel, include those (done above)
-					//plus additional, randomly selected accessions, until you get r accessions
-					//for (int i=0;i<r;i++)
-					for (int i=KernelAccessionIndex.size();i<r;i++)
-					{
-						//choose an accession randomly from those available
-						RandAcc = rand() % TempList.size();
-						//add it to the list
-						AccessionsInCore[i] = TempList[RandAcc];
-						//AccessionsInCore.push_back(TempList[RandAcc]);
-						
-						//remove it from the list of available accessions
-						TempList.erase(TempList.begin()+RandAcc);
-					}
-			
-					
-					//assemble genotypes for random core and calculate diversity
-					//1. put together initial list of active alleles
-					//vector<vector<vector<std::string> > >().swap(CoreAlleles); //clear CoreAlleles
-					CoreAlleles.clear();
-					CoreAlleles.resize( AccessionsInCore.size() );
-					for (int i=0;i<AccessionsInCore.size();i++)
-					{
-						b = AccessionsInCore[i];
-						//CoreAlleles.push_back(ActiveAlleleByPopList[b]);
-						CoreAlleles[i] = ActiveAlleleByPopList[b];
-					}
-
-					//2. calculate diversity from random selection at active loci
-					//vector<vector<vector<std::string> > >().swap(AlleleList); //clear AlleleList
-					AlleleList.clear();
-					AlleleList = CoreAlleles;
-			
-					MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
-					//in MyCalculateDiversity, latter two variables are updated as references
-					//save them away in non-updated variables
-					StartingRandomActiveDiversity = RandomActiveDiversity;
-					StartingAltRandomActiveDiversity = AltRandomActiveDiversity;
-					
-		//cout << "RandomActiveDiversity="<<RandomActiveDiversity<<"\n";
-		//cout << "AltRandomActiveDiversity="<<AltRandomActiveDiversity<<"\n";
-
-
-					//3. calculate diversity from random selection at target loci
-					//vector<vector<vector<std::string> > >().swap(AlleleList); //clear AlleleList
-					AlleleList.clear();
-					AlleleList.resize( AccessionsInCore.size() );
-					for (int j=0;j<AccessionsInCore.size();j++)
-					{
-						b = AccessionsInCore[j];
-						//AlleleList.push_back(TargetAlleleByPopList[b]);
-						AlleleList[j] = TargetAlleleByPopList[b];
-					}
-					MyCalculateDiversity(AlleleList, TargetMaxAllelesList, Standardize, RandomTargetDiversity, AltRandomTargetDiversity);
-
-		
-		
-		//cout << "RandomTargetDiversity="<<RandomTargetDiversity<<"\n";
-		//cout << "AltRandomTargetDiversity="<<AltRandomTargetDiversity<<"\n";
-		
-
-		
-					//BEGIN OPTIMIZATION
-					StartingDiversity = 0; //this is the diversity recovered during the prior iteration.
-					plateau = 0; //count of the number of times you have found the best value, evaluates when you are
-								 //stuck on a plateau, assuming acceptance criterion allows downhill steps
-					//this is the iterations step, now an indefinite loop that is broken when 
-					//no improvement is made during the course of the optimization algorithm
-					//If r = kernel size = MinCoreSize then do no optimization but still calculate all variables.
-					if (KernelAccessionIndex.size() == r)
-					{
-							//assemble genotypes for core
-							//1. put together initial list
-							CoreAlleles.clear();
-							CoreAlleles.resize(r);
-							for (int i=0;i<r;i++)
-							{
-								b = AccessionsInCore[i];
-								CoreAlleles[i] = ActiveAlleleByPopList[b];
-							}
-							
-							AlleleList = CoreAlleles;
-							
-							MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
-							best = RandomActiveDiversity; //best is equivalent to OptimizedActiveDiversity
-							AltOptimizedActiveDiversity = AltRandomActiveDiversity;
-					}
-					else
-					{
-						//do optimization
-						while ( true )
+						//randomly add accessions until r accessions are in the core. if there is a kernel, include those (done above)
+						//plus additional, randomly selected accessions, until you get r accessions
+						//for (int i=0;i<r;i++)
+						for (int i=KernelAccessionIndex.size();i<r;i++)
 						{
-							//assemble genotypes for core
-							//1. put together initial list
-							CoreAlleles.clear();
-							CoreAlleles.resize(r);
-							for (int i=0;i<r;i++)
-							{
-								b = AccessionsInCore[i];
-								CoreAlleles[i] = ActiveAlleleByPopList[b];
-							}
-				
-							//2. go through all possible subsets of size r-1, one at a time, noting which is best.
-							//If there is a kernel, do not swap out any of those accessions (they are retained as the
-							//first KernelAccessionIndex.size() items in CoreAlleles).  Accomplished by starting for loop
-							//at KernelAccessionIndex.size().
-							best=0;
-							//for (int i=0;i<CoreAlleles.size();i++)
-							for (int i=KernelAccessionIndex.size();i<CoreAlleles.size();i++)
-							{
-								//remove each item consecutively from the list of all populations in the core
-								AlleleList.clear();
-								TdTempList.clear();
-							
-								TdTempList = CoreAlleles; //swap to temporary vector
-								TdTempList.erase( TdTempList.begin() + i);
-								AlleleList = TdTempList;
-					
-								TempList2.clear();
-								TempList2 = AccessionsInCore;
-								TempList2.erase(TempList2.begin() + i);
-								AccessionsInSubCore = TempList2;
-
-
-								/*Data structure for SubCoreAlleles:
-								SubCore 1..r
-									Population 1..(r-1)
-										AlleleArray 1..NumLoci		
-					
-								--3. fuse alleles from the same locus into a single array, for all accessions, for the current subcore
-								--4. assemble a list of diversity (M) for each locus separately
-								--5. standardize the M values to the maximum possible number of alleles at that locus, and add them up to get final estimate of standardized allelic diversity in the core.  then divide by the number of loci to get a number that is comparable across data sets.
-								--5.5. simultaneous to the calculation, keep track of which subcore is best
-								*/
-					
-								MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
-								nnew = RandomActiveDiversity;
-		
-								if (nnew >= best) // >= allows sideways movement during hill climbing
-								{
-									best = nnew;
-
-									BestSubCore.clear();
-									BestSubCore = AccessionsInSubCore;
-									BestSubCoreAlleles.clear();
-									BestSubCoreAlleles = AlleleList;
-								}
-							}  //for loop cycles thru all subcores
-
-							//reverse sort BestSubCore to support easy assembly of pared TempList below
-							BestSubCoreRevSorted = BestSubCore;
-							std::sort(BestSubCoreRevSorted.begin(), BestSubCoreRevSorted.end(), std::greater<int>());
-			
-							/*
-							6. take the subcore with greatest diversity and consecutively add each 
-							possible additional accession from the base collection.  find the core of size r 
-							(not r-1 subcore) that has the greatest diversity.
-
-							suppress the IDs of those accessions found in the BestSubCore from the 
-							list of all accessions to get a list of remaining accessions.*/
-							TempList = AccessionNameList;
-							for (int k=0;k<BestSubCoreRevSorted.size();k++)
-							{
-								bsc = BestSubCoreRevSorted[k];
-								TempList.erase( TempList.begin() + bsc );
-							}
+							//choose an accession randomly from those available
+							RandAcc = rand() % TempList.size();
+							//add it to the list
+							AccessionsInCore[i] = TempList[RandAcc];
+							//AccessionsInCore.push_back(TempList[RandAcc]);
 						
-							//shuffle the list of remaining accessions, so addition order is not predictable
-							std::random_shuffle (TempList.begin(), TempList.end());
-							
-							//add each remaining accession consecutively, calculate diversity, test 
-							//whether it is better than the prior one
-							best = 0;
-							for (int k=0;k<TempList.size();k++)
-							{
-								bsc = TempList[k];
+							//remove it from the list of available accessions
+							TempList.erase(TempList.begin()+RandAcc);
+						}
+			
 					
-								//define the core
-								TempList2 = BestSubCore;
-								TempList2.resize( TempList2.size() + 1 );
-								//TempList2.push_back(i);
-								TempList2[TempList2.size()-1] = bsc; //add new accession to last vector element
-								AccessionsInCore = TempList2;
+						//assemble genotypes for random core and calculate diversity
+						//1. put together initial list of active alleles
+						//vector<vector<vector<std::string> > >().swap(CoreAlleles); //clear CoreAlleles
+						CoreAlleles.clear();
+						CoreAlleles.resize( AccessionsInCore.size() );
+						for (int i=0;i<AccessionsInCore.size();i++)
+						{
+							b = AccessionsInCore[i];
+							//CoreAlleles.push_back(ActiveAlleleByPopList[b]);
+							CoreAlleles[i] = ActiveAlleleByPopList[b];
+						}
+
+						//2. calculate diversity from random selection at active loci
+						//vector<vector<vector<std::string> > >().swap(AlleleList); //clear AlleleList
+						AlleleList.clear();
+						AlleleList = CoreAlleles;
+			
+						MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
+						//in MyCalculateDiversity, latter two variables are updated as references
+						//save them away in non-updated variables
+						StartingRandomActiveDiversity = RandomActiveDiversity;
+						StartingAltRandomActiveDiversity = AltRandomActiveDiversity;
 					
-								//assemble the allelelist for the core
-								TdTempList = BestSubCoreAlleles;
-								TdTempList.resize( TdTempList.size() + 1 );
-								//TdTempList.push_back( ActiveAlleleByPopList[i] );
-								TdTempList[TdTempList.size()-1] = ActiveAlleleByPopList[bsc];
-								AlleleList = TdTempList;
-					
-								//calculate diversity
-								MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, nnew, TempAltOptimizedActiveDiversity); 
+			//cout << "RandomActiveDiversity="<<RandomActiveDiversity<<"\n";
+			//cout << "AltRandomActiveDiversity="<<AltRandomActiveDiversity<<"\n";
 
 
-//cout << nnew << "\n";
+						//3. calculate diversity from random selection at target loci
+						//vector<vector<vector<std::string> > >().swap(AlleleList); //clear AlleleList
+						AlleleList.clear();
+						AlleleList.resize( AccessionsInCore.size() );
+						for (int j=0;j<AccessionsInCore.size();j++)
+						{
+							b = AccessionsInCore[j];
+							//AlleleList.push_back(TargetAlleleByPopList[b]);
+							AlleleList[j] = TargetAlleleByPopList[b];
+						}
+						MyCalculateDiversity(AlleleList, TargetMaxAllelesList, Standardize, RandomTargetDiversity, AltRandomTargetDiversity);
 
-				
-								//test whether current diversity is higher than the best diversity found so far
-								if (nnew >= best) // >= allows sideways movement during hill climbing
+		
+		
+			//cout << "RandomTargetDiversity="<<RandomTargetDiversity<<"\n";
+			//cout << "AltRandomTargetDiversity="<<AltRandomTargetDiversity<<"\n";
+		
+
+		
+						//BEGIN OPTIMIZATION
+						StartingDiversity = 0; //this is the diversity recovered during the prior iteration.
+						plateau = 0; //count of the number of times you have found the best value, evaluates when you are
+									 //stuck on a plateau, assuming acceptance criterion allows downhill steps
+						//this is the iterations step, now an indefinite loop that is broken when 
+						//no improvement is made during the course of the optimization algorithm
+						//If r = kernel size = MinCoreSize then do no optimization but still calculate all variables.
+						if (KernelAccessionIndex.size() == r)
+						{
+								//assemble genotypes for core
+								//1. put together initial list
+								CoreAlleles.clear();
+								CoreAlleles.resize(r);
+								for (int i=0;i<r;i++)
 								{
-									best = nnew;
-									bestcore = AccessionsInCore;
-									//save the alternative diversity value for the best core
-									AltOptimizedActiveDiversity = TempAltOptimizedActiveDiversity;
+									b = AccessionsInCore[i];
+									CoreAlleles[i] = ActiveAlleleByPopList[b];
+								}
+							
+								AlleleList = CoreAlleles;
+							
+								MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
+								best = RandomActiveDiversity; //best is equivalent to OptimizedActiveDiversity
+								AltOptimizedActiveDiversity = AltRandomActiveDiversity;
+						}
+						else
+						{
+							//do optimization
+							while ( true )
+							{
+								//assemble genotypes for core
+								//1. put together initial list
+								CoreAlleles.clear();
+								CoreAlleles.resize(r);
+								for (int i=0;i<r;i++)
+								{
+									b = AccessionsInCore[i];
+									CoreAlleles[i] = ActiveAlleleByPopList[b];
 								}
 				
-							}
-
-							AccessionsInCore = bestcore; //define starting variable for next MSTRAT iteration
-				
-							//if there has been no improvement from the prior iteration, you have reached
-							// the plateau and should exit the repeat
-							if (best == StartingDiversity) 
-							{
-								plateau++;
-								if (plateau > 0) break;
-							}
-							//update starting value and repeat
-							else if (best > StartingDiversity) StartingDiversity = best;
+								//2. go through all possible subsets of size r-1, one at a time, noting which is best.
+								//If there is a kernel, do not swap out any of those accessions (they are retained as the
+								//first KernelAccessionIndex.size() items in CoreAlleles).  Accomplished by starting for loop
+								//at KernelAccessionIndex.size().
+								best=0;
+								//for (int i=0;i<CoreAlleles.size();i++)
+								for (int i=KernelAccessionIndex.size();i<CoreAlleles.size();i++)
+								{
+									//remove each item consecutively from the list of all populations in the core
+									AlleleList.clear();
+									TdTempList.clear();
 							
-							/*//standard break
-							if (best == StartingDiversity) break;
-							else if (best > StartingDiversity) StartingDiversity = best;
-							*/
-								
-						} //while(true) endless loop
-					}
+									TdTempList = CoreAlleles; //swap to temporary vector
+									TdTempList.erase( TdTempList.begin() + i);
+									AlleleList = TdTempList;
+					
+									TempList2.clear();
+									TempList2 = AccessionsInCore;
+									TempList2.erase(TempList2.begin() + i);
+									AccessionsInSubCore = TempList2;
+
+
+									/*Data structure for SubCoreAlleles:
+									SubCore 1..r
+										Population 1..(r-1)
+											AlleleArray 1..NumLoci		
+					
+									--3. fuse alleles from the same locus into a single array, for all accessions, for the current subcore
+									--4. assemble a list of diversity (M) for each locus separately
+									--5. standardize the M values to the maximum possible number of alleles at that locus, and add them up to get final estimate of standardized allelic diversity in the core.  then divide by the number of loci to get a number that is comparable across data sets.
+									--5.5. simultaneous to the calculation, keep track of which subcore is best
+									*/
+					
+									MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
+									nnew = RandomActiveDiversity;
 		
-					//7. Calculate diversity at target loci
-					//assemble the target loci allelelist for the accessions in the best core
-					//vector<vector<vector<std::string> > >().swap(AlleleList); //clear AlleleList
-					AlleleList.clear();
-					AlleleList.resize( AccessionsInCore.size() );
-					for (int j=0;j<AccessionsInCore.size();j++)
-					{
-						b = AccessionsInCore[j];
-						//AlleleList.push_back(TargetAlleleByPopList[b]);
-						AlleleList[j] = TargetAlleleByPopList[b];
-					}
+									if (nnew >= best) // >= allows sideways movement during hill climbing
+									{
+										best = nnew;
+
+										BestSubCore.clear();
+										BestSubCore = AccessionsInSubCore;
+										BestSubCoreAlleles.clear();
+										BestSubCoreAlleles = AlleleList;
+									}
+								}  //for loop cycles thru all subcores
+
+								//reverse sort BestSubCore to support easy assembly of pared TempList below
+								BestSubCoreRevSorted = BestSubCore;
+								std::sort(BestSubCoreRevSorted.begin(), BestSubCoreRevSorted.end(), std::greater<int>());
+			
+								/*
+								6. take the subcore with greatest diversity and consecutively add each 
+								possible additional accession from the base collection.  find the core of size r 
+								(not r-1 subcore) that has the greatest diversity.
+
+								suppress the IDs of those accessions found in the BestSubCore from the 
+								list of all accessions to get a list of remaining accessions.*/
+								TempList = AccessionNameList;
+								for (int k=0;k<BestSubCoreRevSorted.size();k++)
+								{
+									bsc = BestSubCoreRevSorted[k];
+									TempList.erase( TempList.begin() + bsc );
+								}
+						
+								//shuffle the list of remaining accessions, so addition order is not predictable
+								std::random_shuffle (TempList.begin(), TempList.end());
+							
+								//add each remaining accession consecutively, calculate diversity, test 
+								//whether it is better than the prior one
+								best = 0;
+								for (int k=0;k<TempList.size();k++)
+								{
+									bsc = TempList[k];
+					
+									//define the core
+									TempList2 = BestSubCore;
+									TempList2.resize( TempList2.size() + 1 );
+									//TempList2.push_back(i);
+									TempList2[TempList2.size()-1] = bsc; //add new accession to last vector element
+									AccessionsInCore = TempList2;
+					
+									//assemble the allelelist for the core
+									TdTempList = BestSubCoreAlleles;
+									TdTempList.resize( TdTempList.size() + 1 );
+									//TdTempList.push_back( ActiveAlleleByPopList[i] );
+									TdTempList[TdTempList.size()-1] = ActiveAlleleByPopList[bsc];
+									AlleleList = TdTempList;
+					
+									//calculate diversity
+									MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, nnew, TempAltOptimizedActiveDiversity); 
+
+
+	//cout << nnew << "\n";
+
+				
+									//test whether current diversity is higher than the best diversity found so far
+									if (nnew >= best) // >= allows sideways movement during hill climbing
+									{
+										best = nnew;
+										bestcore = AccessionsInCore;
+										//save the alternative diversity value for the best core
+										AltOptimizedActiveDiversity = TempAltOptimizedActiveDiversity;
+									}
+				
+								}
+
+								AccessionsInCore = bestcore; //define starting variable for next MSTRAT iteration
+				
+								//if there has been no improvement from the prior iteration, you have reached
+								// the plateau and should exit the repeat
+								if (best == StartingDiversity) 
+								{
+									plateau++;
+									if (plateau > 0) break;
+								}
+								//update starting value and repeat
+								else if (best > StartingDiversity) StartingDiversity = best;
+							
+								/*//standard break
+								if (best == StartingDiversity) break;
+								else if (best > StartingDiversity) StartingDiversity = best;
+								*/
+								
+							} //while(true) endless loop
+						}
+		
+						//7. Calculate diversity at target loci
+						//assemble the target loci allelelist for the accessions in the best core
+						//vector<vector<vector<std::string> > >().swap(AlleleList); //clear AlleleList
+						AlleleList.clear();
+						AlleleList.resize( AccessionsInCore.size() );
+						for (int j=0;j<AccessionsInCore.size();j++)
+						{
+							b = AccessionsInCore[j];
+							//AlleleList.push_back(TargetAlleleByPopList[b]);
+							AlleleList[j] = TargetAlleleByPopList[b];
+						}
 			
 			
-					//calculate diversity at target loci based upon the optimized core selection
-					MyCalculateDiversity(AlleleList, TargetMaxAllelesList, Standardize, OptimizedTargetDiversity, AltOptimizedTargetDiversity);
+						//calculate diversity at target loci based upon the optimized core selection
+						MyCalculateDiversity(AlleleList, TargetMaxAllelesList, Standardize, OptimizedTargetDiversity, AltOptimizedTargetDiversity);
 
 			
-					//8. Assemble stats for optimized core and add to output vectors
-					//create a list of accession names from the list of accession ID's in AccessionsInCore
-					sort( AccessionsInCore.begin(), AccessionsInCore.end() );
+						//8. Assemble stats for optimized core and add to output vectors
+						//create a list of accession names from the list of accession ID's in AccessionsInCore
+						sort( AccessionsInCore.begin(), AccessionsInCore.end() );
 					
-					TempListStr.clear();
-					TempListStr.resize(r);
-					for (int i=0;i<AccessionsInCore.size();i++)
-					{
-						b = AccessionsInCore[i];
-						TempListStr[i] = FullAccessionNameList[b];
-					}
+						TempListStr.clear();
+						TempListStr.resize(r);
+						for (int i=0;i<AccessionsInCore.size();i++)
+						{
+							b = AccessionsInCore[i];
+							TempListStr[i] = FullAccessionNameList[b];
+						}
 
-					//load the variables onto the results vectors
-					//numerical results
-					row = ((r - MinCoreSize)*NumReplicates) + nr - ( (NumReplicates*(SamplingFreq-1))*( (r-MinCoreSize)/SamplingFreq ) );
-					// (r - MinCoreSize)*NumReplicates) + nr specifies row number if SamplingFreq=1
-					// (NumReplicates*(SamplingFreq-1)) specifies a step value to correct when SamplingFreq>1
-					// ( (r-MinCoreSize)/SamplingFreq ) specifies the replicate on core size, accounting for SamplingFreq
-					// see file Calculation of row value.xlsx for development of the 'row' index
-					Results[row][0] = r;
-					Results[row][1] = StartingRandomActiveDiversity;//RandomActiveDiversity;
-					Results[row][2] = best; //equivalent to OptimizedActiveDiversity
-					Results[row][3] = RandomTargetDiversity;
-					Results[row][4] = OptimizedTargetDiversity;
-					Results[row][5] = StartingAltRandomActiveDiversity;//AltRandomActiveDiversity;
-					Results[row][6] = AltOptimizedActiveDiversity;
-					Results[row][7] = AltRandomTargetDiversity;
-					Results[row][8] = AltOptimizedTargetDiversity;
+						//load the variables onto the results vectors
+						//numerical results
+						row = ((r - MinCoreSize)*NumReplicates) + nr - ( (NumReplicates*(SamplingFreq-1))*( (r-MinCoreSize)/SamplingFreq ) );
+						// (r - MinCoreSize)*NumReplicates) + nr specifies row number if SamplingFreq=1
+						// (NumReplicates*(SamplingFreq-1)) specifies a step value to correct when SamplingFreq>1
+						// ( (r-MinCoreSize)/SamplingFreq ) specifies the replicate on core size, accounting for SamplingFreq
+						// see file Calculation of row value.xlsx for development of the 'row' index
+						Results[row][0] = r;
+						Results[row][1] = StartingRandomActiveDiversity;//RandomActiveDiversity;
+						Results[row][2] = best; //equivalent to OptimizedActiveDiversity
+						Results[row][3] = RandomTargetDiversity;
+						Results[row][4] = OptimizedTargetDiversity;
+						Results[row][5] = StartingAltRandomActiveDiversity;//AltRandomActiveDiversity;
+						Results[row][6] = AltOptimizedActiveDiversity;
+						Results[row][7] = AltRandomTargetDiversity;
+						Results[row][8] = AltOptimizedTargetDiversity;
 			
-					//core set members
-					Members[row] = TempListStr; 
+						//core set members
+						Members[row] = TempListStr; 
 			
-					//write the results onto the recovery files
-					WriteRecoveryFile(RecoveryFilePath, r, StartingRandomActiveDiversity, best, RandomTargetDiversity, OptimizedTargetDiversity, StartingAltRandomActiveDiversity, AltOptimizedActiveDiversity, AltRandomTargetDiversity, AltOptimizedTargetDiversity, TempListStr);
+						//write the results onto the recovery files
+						WriteRecoveryFile(RecoveryFilePath, r, StartingRandomActiveDiversity, best, RandomTargetDiversity, OptimizedTargetDiversity, StartingAltRandomActiveDiversity, AltOptimizedActiveDiversity, AltRandomTargetDiversity, AltOptimizedTargetDiversity, TempListStr);
 					
-					//display progress
-					progindex = progindex + 1;
-					percent = 100*(progindex/V1);
-					printProgBar(percent); 
-					//cout << progindex << "\n";
+						//display progress
+						progindex = progindex + 1;
+						percent = 100*(progindex/V1);
+						printProgBar(percent); 
+						//cout << progindex << "\n";
 					
-				//} //end NumReplicates
-			//} //end   for (r=MinCoreSize;r<MaxCoreSize+1;r=r+SamplingFreq)
-			} //end   for (int rnr = 0; rnr<rsteps*NumReplicates;++rnr)
+					//} //end NumReplicates
+				//} //end   for (r=MinCoreSize;r<MaxCoreSize+1;r=r+SamplingFreq)
+				} //end   for (int rnr = 0; rnr<rsteps*NumReplicates;++rnr)
 					
-	} //end #pragma omp parallel	
+		} //end #pragma omp parallel	
 	
 
-	//set up file stream for output file
-	ofstream output; 
-	output.open(OutFilePath);
-	output.close(); //quick open close done to clear any existing file each time program is run
-	output.open(OutFilePath, ios::out | ios::app); //open file in append mode
-	output << "core size	random active diversity	optimized active diversity	random target diversity	optimized target diversity	alt random active diversity	alt optimized active diversity	alt random target diversity	alt optimized target diversity	core members" << "\n";
+		//set up file stream for output file
+		ofstream output; 
+		output.open(OutFilePath);
+		output.close(); //quick open close done to clear any existing file each time program is run
+		output.open(OutFilePath, ios::out | ios::app); //open file in append mode
+		output << "core size	random reference diversity	optimized reference diversity	random target diversity	optimized target diversity	alt random reference diversity	alt optimized reference diversity	alt random target diversity	alt optimized target diversity	core members" << "\n";
 			
-	//write out results row by row
-	for (i=0;i<V1;i++)
-	{
-		//write variables
-		output 	<< Results[i][0] 
-				<< "	" << Results[i][1] 
-				<< "	" << Results[i][2] 
-				<< "	" << Results[i][3] 
-				<< "	" << Results[i][4] 
-				<< "	" << Results[i][5] 
-				<< "	" << Results[i][6] 
-				<< "	" << Results[i][7] 
-				<< "	" << Results[i][8] 
-				<< "	" << "(";
-		//write Accessions retained
-		for (j=0;j<Members[i].size();j++)
+		//write out results row by row
+		for (i=0;i<V1;i++)
 		{
-			if ( j==(Members[i].size() - 1) )
+			//write variables
+			output 	<< Results[i][0] 
+					<< "	" << Results[i][1] 
+					<< "	" << Results[i][2] 
+					<< "	" << Results[i][3] 
+					<< "	" << Results[i][4] 
+					<< "	" << Results[i][5] 
+					<< "	" << Results[i][6] 
+					<< "	" << Results[i][7] 
+					<< "	" << Results[i][8] 
+					<< "	" << "(";
+			//write Accessions retained
+			for (j=0;j<Members[i].size();j++)
 			{
-				//add trailing parentheses and move to next row
-				output << Members[i][j] << ")\n";
-			}
-			else
-			{
-				output << Members[i][j] << ",";
+				if ( j==(Members[i].size() - 1) )
+				{
+					//add trailing parentheses and move to next row
+					output << Members[i][j] << ")\n";
+				}
+				else
+				{
+					output << Members[i][j] << ",";
+				}
 			}
 		}
-	}
 	
-	//wrap up write step
-	output.close();
+		//wrap up write step
+		output.close();
 
-	//delete all recovery files
-	#pragma omp parallel if(parallelism_enabled) 
-	{		
-		stringstream ss;
-		ss << OutFilePath << ".t" << omp_get_thread_num() << ".tmp"; 
-		string rfp = ss.str();
-		const char* RecoveryFilePath = rfp.c_str();
-		remove(RecoveryFilePath);
+		//delete all recovery files
+		#pragma omp parallel if(parallelism_enabled) 
+		{		
+			stringstream ss;
+			ss << OutFilePath << ".t" << omp_get_thread_num() << ".tmp"; 
+			string rfp = ss.str();
+			const char* RecoveryFilePath = rfp.c_str();
+			remove(RecoveryFilePath);
+		}
+	
+	
+		//stop the clock
+		time (&endm);
+		dif = difftime (endm,startm);
+		cout << "\nM+ search complete.  Elapsed time = "<< dif << " seconds.\n\n";
 	}
-	
-	
-	//stop the clock
-	time (&endm);
-	dif = difftime (endm,startm);
-	cout << "\nM+ search complete.  Elapsed time = "<< dif << " seconds.\n\n";
-
 
 
 

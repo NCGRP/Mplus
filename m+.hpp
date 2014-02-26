@@ -34,12 +34,7 @@ class Node
 
 		//set functions
 		void Setf0(double v);
-		//void Setf1(double v);
-		//void Setf2(double v);
-		//void Setf3(double v);
-
 		void Setg(double s);
-
 		void Seth0(double t);
 		void Seta0(double t);
 		void Seta1(double t);
@@ -48,22 +43,16 @@ class Node
 		void SetAccName(std::string p);
 		void SetAlleles(vector<vector<std::string> > q);
 		void SetAlleleCounts(vector<int> r);
-		//void Calculatef(vector<int> currentstate, vector<int> goalstate, vector<int> PloidyList);
-		//void SetParent(Node u);
 		void SetParent(std::string u);
 		void SetPopSize(int w);
-		//void SetMinFreq(double t);
-		//void SetMeanFreq(double t);
 		
 		//get functions
 		double Getf0(), Getg(), Geth0(), Geta0(), Geta1(), Geta2();
 		std::string GetAccName();
 		std::string GetParent();
-		//Node GetParent();
 		vector<int> GetAlleleCounts();
 		vector<vector<string> > GetSetOfAlleles();
 		int GetPopSize();
-		//double GetMinFreq(), GetMeanFreq();
 		
 		//special functions
 		// declare a sort functor nested within Node, old version
@@ -76,14 +65,10 @@ class Node
 		};
 		
 		
-		
-		
-		
 		//sort functor for SortedCostNodeList::push, ranks Nodes by distance metrics
 		struct fSort : public binary_function<Node, Node, bool>
 	   	{
 		  	bool operator()(Node i, Node j)
-			//bool fSort(Node nodei, Node nodej)
 			{
 				if (i.Getf0() < j.Getf0()) return true; 		// estimated path length is shorter
 				else if (i.Getf0() == j.Getf0()) 				//path length is the same
@@ -118,8 +103,6 @@ class Node
 		vector<int> AlleleCounts;
 		std::string Parent;
 		int PopSize;
-		//double MinFreq; //frequency of rarest allele
-		//double MeanFreq; //mean allele frequency
 
 };
 
@@ -144,18 +127,16 @@ class SortedCostNodeList
 
 
 /***************VARIABLES*****************/
-//vector<Alfreq> AlleleFrequencies;
 
 
-/***************FUNCTIONS IN MAIN FILE*****************/
+/***************SHARED FUNCTIONS IN M+.cpp*****************/
 std::vector<std::string> MyFilterDuplicates (std::vector<std::string> ListToFilter);
 std::vector<std::string> MyFilterDuplicatesII (std::vector<std::string> ListToFilter);
 
-/***************FUNCTIONS IN A* FILE*****************/
+/***************SHARED FUNCTIONS IN aStar.cpp*****************/
 void printOPENList(SortedCostNodeList OPENlist);
 void printCLOSEDList(SortedCostNodeList CLOSEDlist);
 void printAllNodes(std::vector<Node> AllNodes);
 
-
-/***************FUNCTIONS IN EXTERNAL FILES*****************/
+/***************FUNCTIONS SHARED BETWEEN M+.cpp and aStar.cpp*****************/
 int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAllelesByPopList, std::vector<int> ActiveMaxAllelesList, std::vector<std::string> UniqLociNamesList, std::vector<int> ReferenceOrTargetKey, vector<std::string> FullAccessionNameList, vector<int> PloidyList, vector<int> PopSizes, vector<Alfreq> AlleleFrequencies, int parallelism_enabled);

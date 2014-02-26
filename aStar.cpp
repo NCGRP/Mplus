@@ -760,11 +760,40 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 				//trace back the ParentPath from node current to get the ideal core set
 				ParentPath = MyReconstructPath(node_current, AllNodes);
 				ParentPath.push_back(node_current.GetAccName());
-				std::sort(ParentPath.begin(), ParentPath.end());
+				
+				//output ordered core to terminal
 				cout << "\nThe ideal core set contains "<<ParentPath.size()<<" accessions.\n";
 				cout << "One ideal core = ";
-				for (i=0;i<ParentPath.size();++i) cout << ParentPath[i] << ",";
-				cout << "\n";
+				for (i=0;i<ParentPath.size();++i) 
+				{
+					if (i == ParentPath.size() - 1) cout << ParentPath[i] << "\n";
+					else cout << ParentPath[i] << ",";
+				}
+				
+				//write ordered core to output file
+				ofstream output; //set up file stream for output file
+				output.open(IdealFilePath);
+				output.close(); //quick open close done to clear any existing file each time program is run
+				output.open(IdealFilePath, ios::out);
+				output << "Ideal core\n(";
+				for (i=0;i<ParentPath.size();++i) 
+				{
+					if (i == ParentPath.size() - 1) output << ParentPath[i] << ")\n";
+					else output << ParentPath[i] << ",";
+				}
+				output.close();
+
+				//write sorted core to terminal
+				cout << "Sorted = ";
+				std::sort(ParentPath.begin(), ParentPath.end());
+					for (i=0;i<ParentPath.size();++i) 
+				{
+					if (i == ParentPath.size() - 1) cout << ParentPath[i] << "\n";
+					else cout << ParentPath[i] << ",";
+				}
+				
+				
+				
 				break;
 			}
 		
