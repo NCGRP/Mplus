@@ -55,14 +55,14 @@ class Node
 		int GetPopSize();
 		
 		//special functions
-		// declare a sort functor nested within Node, old version
+		/*// declare a sort functor nested within Node, old version
 		struct gSort : public binary_function<Node, Node, bool>
 	   	{
 		  	bool operator()(Node i, Node j)
 			{
 				(i.Getg() < j.Getg());
 			}
-		};
+		};*/
 		
 		
 		//sort functor for SortedCostNodeList::push, ranks Nodes by distance metrics

@@ -10,11 +10,9 @@ vector<std::string> MyReconstructPath(Node e, vector<Node> AllNodes)
 	vector<std::string> path; //path is going to contain the calculated path in reverse order
 	
 	Parent = e.GetParent();
-	//path.push_back(Parent);
 	
 	while (Parent != "start")
 	{
-		//cout << "Parent="<< Parent << "\n";
 		//get the node associated with the parent of current node in path
 		for (i=0;i<AllNodes.size();++i)
 		{
@@ -23,19 +21,16 @@ vector<std::string> MyReconstructPath(Node e, vector<Node> AllNodes)
 			{
 				path.push_back(f); //add the matching accession name to path
 				Parent = AllNodes[i].GetParent(); //get the parent of node with AccName = f
-				//cout << "parent node of "<<AllNodes[i].GetAccName()<< " = " << AllNodes[i].GetParent() << "\n";
 				break;
 			}
 		}
 	}
 
 	std::reverse(path.begin(), path.end()); //reverse the path
-	
-
 	return path;
 }
 
-//reconstruct the path from the node back to the start
+//reconstruct the path from the node back to the start, thread safe
 vector<std::string> MyReconstructPathII(Node e, vector<Node> AllNodes)
 {
 	int i;
@@ -46,13 +41,10 @@ vector<std::string> MyReconstructPathII(Node e, vector<Node> AllNodes)
 	path.resize(e.Getf0() + 1);
 	
 	Parent = e.GetParent();
-	//path.push_back(Parent);
 	
 	int p = 0;  //p indexes the position in the parent path vector
 	while (Parent != "start")
 	{
-		//cout << "Parent="<< Parent << "\n";
-		
 		//get the node associated with the parent of current node in path
 		for (i=0;i<AllNodes.size();++i)
 		{
@@ -61,19 +53,15 @@ vector<std::string> MyReconstructPathII(Node e, vector<Node> AllNodes)
 			{
 				//add the matching accession name to path
 				path[p] = f;
-				//path.push_back(f); 
 				++p; //index++ so next parent is put in the next vector position
 				
 				Parent = AllNodes[i].GetParent(); //get the parent of node with AccName = f
-				//cout << "parent node of "<<AllNodes[i].GetAccName()<< " = " << AllNodes[i].GetParent() << "\n";
 				break;
 			}
 		}
 	}
 
 	std::reverse(path.begin(), path.end()); //reverse the path
-	
-
 	return path;
 }
 
@@ -92,7 +80,6 @@ void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<
 	g = double(ParentPath.size()) - 1.0; //minus 1 because path length includes node_start
 	e.Setg(g);
 	
-	
 	 /*
 	To estimate the path length remaining assuming this node is part of the final path, calculate the heuristic h.
 	1. Tabulate the difference in allele count between the currentstate and goalstate
@@ -110,7 +97,6 @@ void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<
 	minimum number of accessions needed to complete the collection of alleles, h0.  
 	*/
 	
-	
 	//h = minimum # accessions required to collect all remaining alleles
 	//at worst collected locus, assuming Node e is part of the solution.
 	vector<int> currentstate = e.GetAlleleCounts();
@@ -118,7 +104,6 @@ void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<
 	vector<double> d(goalstate.size());  //this vector will hold the difference in allele count
 									     //between current state and goal, for each locus
 	//Step 1. Get # alleles needed at each locus
-	//cout << "goalstate[i]	currentstate[i]\n";
 	for (i=0;i<d.size();++i)
 	{
 		d[i] = (double)goalstate[i] - (double)currentstate[i];
@@ -145,6 +130,7 @@ void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<
 		n = AllNodes[i];
 		AllAcc.push_back(n.GetAccName());
 	}
+	
 	//remove accessions in parent path from AllAcc, put difference in vector v
 	vector<std::string> v;
 	std::sort(ParentPath.begin(), ParentPath.end());
@@ -193,12 +179,10 @@ void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<
 	h0 = i + 1;
 	e.Seth0(h0);
 	e.Setf0(g+h0);
-	
-	cout.precision(15);
-	
+		
 	/*
 	In practice, the above heuristic h0 will seldom be meaningful as it assumes complete
-	heterozygosity of all individuals in an accession.  It will often be the same for 
+	heterozygosity of all individuals in an accession.  h0 will often be the same for 
 	several accessions.  For this reason, to settle ties, we need to calculate ancillary metrics 
 	indicating the present node's suitability to be included.  These include metrics that
 	measure the value of the node in terms of the total number of new alleles it will
@@ -280,7 +264,6 @@ void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<
 		for (j=0;j<v.size();++j) cout << v[j] << " ";
 		cout << "\n\n";
 		*/
-		
 	}
 	e.Seta0(a0);
 	
@@ -310,13 +293,10 @@ void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<
 		}
 	}
 	
-
 	//2.
 	if (zz.size() > 0) a1 = *std::min_element(zz.begin(), zz.end());
 	else a1 = -1.0; //add a default value if no new alleles are added by current node
 	e.Seta1(a1);
-	
-
 	
 	/*calculate a2, the average frequency of alleles added by the current node
 	1. Vector zz contains the list of frequencies of allunique alleles added by the 
@@ -325,7 +305,6 @@ void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<
 	if (zz.size() > 0) 	a2 = std::accumulate(zz.begin(), zz.end(), 0.0) / zz.size();
 	else a2 = -1.0;
 	e.Seta2(a2);
-	
 }
 
 //counts the number of alleles at each locus, eliminating redundancies by using set
@@ -340,24 +319,11 @@ vector<int> MyCountAllelesAtEachLocus(vector<vector<std::string> > a)
 	{
 		t = a[i]; //get all alleles at locus i
 		
-		/*cout << "All alleles at locus " << i << " before set: ";
-		for (j=0;j<t.size();++j) cout << t[j] << ",";
-		cout << "\n";
-		*/
-		
 		//eliminate redundancy in t by putting into a set
 		AlleleSet.clear(); //clear AlleleSet
-		for (j=0;j<t.size();++j)
-		{
-		AlleleSet.insert(t[j]); //filter out redundant alleles by dumping the vector into a set	
-		}
 		
-		/*cout << "All alleles at locus " << i << " after set: ";
-		set<std::string>::iterator its;
-		for (its=AlleleSet.begin();its!=AlleleSet.end();++its) cout << *its << ",";
-		cout << "\n AlleleSet.size() = "<<AlleleSet.size()<<"\n";
-		*/
-		
+		//filter out redundant alleles by dumping the vector into a set
+		for (j=0;j<t.size();++j) AlleleSet.insert(t[j]);
 		
 		b = AlleleSet.size();
 		AlleleCounts.push_back(b);
@@ -365,54 +331,6 @@ vector<int> MyCountAllelesAtEachLocus(vector<vector<std::string> > a)
 
 	return AlleleCounts;
 }
-
-/*//this seems to be unnecessary
-//calculate frequency of rarest allele, and mean frequency of all alleles, return as reference
-void MyCalculateBaseFreqs(std::string AccName, vector<Alfreq> AlleleFrequencies, vector<vector<std::string> > SetOfAlleles, double& MinFreq, double& MeanFreq)
-{
-	int i, j, k, l;
-	vector<std::string> a, b;
-	vector<double> c;
-	vector<double> FreqsForAllPresentAlleles;
-	vector<std::string>::iterator it;
-	std::string n;
-	
-	for (i=0;i<SetOfAlleles.size();++i)
-	{
-		a = SetOfAlleles[i]; //get the alleles for the current locus present in the current Node
-		b = AlleleFrequencies[i].allelenames; //get all alleles possible at the current locus,
-											  //AlleleFrequencies.allelenames and SetOfAlleles have same locus order 
-			
-			 print out alleles
-			cout << "a = ";
-			for (k=0;k<a.size();k++) cout << a[k] << " ";
-			cout << "\n";
-			cout << "b = ";
-			for (k=0;k<b.size();k++) cout << b[k] << " ";
-			cout << "\n";
-			
-			
-		c = AlleleFrequencies[i].frequencies; //get associated list of frequencies
-		for (j=0;j<a.size();++j)
-		{
-			n = a[j]; //current allele name
-			
-			
-			it = std::find(b.begin(), b.end(), n); //search for current allele in list of all alleles
-			l = std::distance(b.begin(), it); //iterator to index
-			FreqsForAllPresentAlleles.push_back(c[l]); //get frequency by converting iterator to index
-
-				//cout << n << " " << c[l] << "\n";
-		}
-	}
-	
-	//get smallest allele frequency, returns reference to iterator
-	MinFreq = *std::min_element(FreqsForAllPresentAlleles.begin(), FreqsForAllPresentAlleles.end());
-	
-	//get average allele frequency
-	MeanFreq = std::accumulate(FreqsForAllPresentAlleles.begin(), FreqsForAllPresentAlleles.end(), 0.0) / FreqsForAllPresentAlleles.size();
-}
-*/
 
 vector<int> MyGetUpdatedAlleleCounts(vector<std::string> ParentPath, vector<Node> AllNodes, vector<int> RefPloidyList)
 {
@@ -450,7 +368,6 @@ vector<int> MyGetUpdatedAlleleCounts(vector<std::string> ParentPath, vector<Node
 	return w;
 }
 
-
 void printOPENlist(SortedCostNodeList OPENlist)
 {
 	//print out OPENlist
@@ -467,12 +384,6 @@ void printOPENlist(SortedCostNodeList OPENlist)
 				<< ess[i].Geta1() << "\t" 
 				<< ess[i].Geta2()<<"\n";
 	}
-}
-
-void MyDoWrapUp()
-{
-	cout << "you are done.\n";
-	exit(0);
 }
 
 void printCLOSEDlist(SortedCostNodeList CLOSEDlist)
@@ -495,7 +406,7 @@ void printCLOSEDlist(SortedCostNodeList CLOSEDlist)
 
 void printAllNodes(vector<Node> AllNodes)
 {		
-	//printout AllNodes
+	//print out AllNodes
 	vector<Node> ess = AllNodes;
 	cout << "\nAllNodes\nAccName	Parent	f0	g	h0	a0	a1	a2\n";
 	for (int i=0;i<ess.size();++i)
@@ -512,8 +423,7 @@ void printAllNodes(vector<Node> AllNodes)
 }
 
 
-
-//find functor to retrieve Node that matches AccName
+//functor to retrieve Node that matches AccName
 struct FindNodeViaAccName : public binary_function<Node, std::string, bool>
 	{
 		bool operator()(Node& i, const std::string& nn) const
@@ -534,26 +444,17 @@ Node::~Node() {}
 
 //get info from class Node
 double Node::Getf0() {return f0;}
-//double Node::Getf1() {return f1;}
-//double Node::Getf2() {return f2;}
-//double Node::Getf3() {return f3;}
-
 double Node::Getg() {return g;}
-
 double Node::Geth0() {return h0;}
 double Node::Geta0() {return a0;}
 double Node::Geta1() {return a1;}
 double Node::Geta2() {return a2;}
 
 std::string Node::GetParent() {return Parent;}
-//Node Node::GetParent() {return Parent;} //returns Parent node
 std::string Node::GetAccName() {return AccName;}
 vector<int> Node::GetAlleleCounts() {return AlleleCounts;}
 vector<vector<string> > Node::GetSetOfAlleles() {return SetOfAlleles;}
 int Node::GetPopSize() {return PopSize;}
-
-//double Node::GetMinFreq() {return MinFreq;}
-//double Node::GetMeanFreq() {return MeanFreq;}
 
 //place info into class Node
 void Node::SetAccName(std::string p) {AccName = p;}
@@ -569,8 +470,6 @@ void Node::Seta1(double t) {a1 = t;}
 void Node::Seta2(double t) {a2 = t;}
 
 void Node::SetPopSize(int w) {PopSize = w;}
-//void Node::SetMinFreq(double t) {MinFreq = t;}
-//void Node::SetMeanFreq(double t) {MeanFreq = t;}
 
 
 
@@ -580,7 +479,7 @@ void Node::SetPopSize(int w) {PopSize = w;}
 SortedCostNodeList::SortedCostNodeList() {}
 SortedCostNodeList::~SortedCostNodeList() {}
 
-//add a node to the class
+//add a single node to the class
 void SortedCostNodeList::push(Node x)
 {
 	s.push_back(x); //add the new node to the vector s
@@ -595,7 +494,6 @@ void SortedCostNodeList::pushs(vector<Node> x)
 	std::sort(s.begin(), s.end(), Node::fSort());//sort vector ascending
 	std::reverse(s.begin(), s.end()); //reverse vector so shortest is at end
 }
-
 
 //return least cost node from the class, remove
 Node SortedCostNodeList::pop()
@@ -619,8 +517,6 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 	//get total number of alleles
 	int TotAlleles = 0;
 	for (i=0;i<ActiveMaxAllelesList.size();++i) TotAlleles = TotAlleles + ActiveMaxAllelesList[i];
-
-	//get number of unique alleles at each locus, this is just ActiveMaxAllelesList
 		
 	//get list of unique allele names at each locus, remove target loci from UniqLociNamesList
 	// and PloidyList, reference(0), target(1)
@@ -649,32 +545,18 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 	//set goal state, goal is a vector of the count of all alleles across all reference loci
 	vector<int> goalstate = ActiveMaxAllelesList;
 	
-
 	//fill in starting state for all Nodes, this is the basic description of each accession
 	//do not fill in information for Parent, AlleleCounts, and distances
-	vector<Node> BaseNodes;
-	//double MinFreq, MeanFreq;
+	vector<Node> AllNodes;
 	for (i=0;i<FullAccessionNameList.size();++i)
 	{
 		Node node_base;
-		//set basic info
 		node_base.SetAccName(FullAccessionNameList[i]);
 		node_base.SetAlleles(ActiveAlleleByPopList[i]);
 		node_base.SetPopSize(PopSizes[i]);
-		/*
-		//set allele frequencies
-		MyCalculateBaseFreqs(FullAccessionNameList[i], AlleleFrequencies, ActiveAlleleByPopList[i], MinFreq, MeanFreq);
-		node_base.SetMinFreq(MinFreq);
-		node_base.SetMeanFreq(MeanFreq);
-		*/
 		
-		BaseNodes.push_back(node_base);
+		AllNodes.push_back(node_base);
 	}
-
-
-	//create a vector AllNodes, that will allow you to track parents, it will be updated
-	vector<Node> AllNodes = BaseNodes;
-	
 	
 	//create start node
 	//set basic info
@@ -687,259 +569,212 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 	
 	node_start.SetAlleleCounts(startstate);
 	node_start.SetPopSize(1);//1 used for no special reason, for other nodes it will affect calc of distances, but not for node_start
-	/*
-	//set allele frequencies, here made negative to avoid math error, but still signal that the value is undefined for node_start
-	node_start.SetMinFreq(-1.0);
-	node_start.SetMeanFreq(-1.0);
-	*/
 	node_start.SetParent("start");
 	
 	AllNodes.push_back(node_start);
 	MyCalculatef(node_start, AllNodes, goalstate, RefPloidyList, AlleleFrequencies);
 
 	OPENlist.push(node_start); //put node_start on OPENlist
-	
 
-	
-	//#pragma omp parallel if(parallelism_enabled) 
-	//{
-		//ENTER A* ALGORITHM
-		Node node_current, node_successor;
-		vector<std::string> ParentPath;
-		vector<Node> successorNodes;
-		vector<int> currentstate;
 
-		vector<std::string> AccNameList;
-		AccNameList = FullAccessionNameList;
-		AccNameList.push_back("start"); //add start state to list of node names, for use to determine valid successor nodes
-	
-		std::string nn;
-		vector<string>::iterator it;
-		vector<Node>::iterator itn;
-		vector<Node> s;
-		vector<std::string> v;
-		vector<int> w;
-		int l;
-		Node tempNode;
-		static const SortedCostNodeList emptyl; //this will be used to zero OPENlist between loops
-		std::string Soln; //holds whether a solution was found or not
 
-		while (true)
+	//ENTER A* ALGORITHM
+	Node node_current, node_successor;
+	vector<std::string> ParentPath;
+	vector<Node> successorNodes;
+	vector<int> currentstate;
+
+	vector<std::string> AccNameList;
+	AccNameList = FullAccessionNameList;
+	AccNameList.push_back("start"); //add start state to list of node names, for use to determine valid successor nodes
+	
+	std::string nn;
+	vector<string>::iterator it;
+	vector<Node>::iterator itn;
+	vector<Node> s;
+	vector<std::string> v;
+	vector<int> w;
+	int l;
+	Node tempNode;
+	static const SortedCostNodeList emptyl; //this will be used to zero OPENlist between loops
+	std::string Soln; //holds whether a solution was found or not
+
+	while (true)
+	{
+
+		//exit condition 1, OPENlist is empty so there is no solution
+		if (OPENlist.s.size() == 0) 
 		{
-		
-			//exit condition 1, OPENlist is empty so there is no solution
-			if (OPENlist.s.size() == 0) 
-			{
-				Soln = "no";
-				cout << "Sorry, there is no solution.\n";
-				break;
-			}
-		
-			//get node with lowest f0 (or a0 or a1 or a2) on OPENlist, call it node_current
-			node_current = OPENlist.pop();  //pop removes the best node because everything is sorted when it is pushed onto the OPENlist
-		
-			//add node_current to CLOSEDlist
-			CLOSEDlist.push(node_current);
+			Soln = "no";
+			cout << "Sorry, there is no solution for A* optimization.\n";
+			break;
+		}
 
-			//Display status of search
-			currentstate = node_current.GetAlleleCounts();
-			vector<std::string>().swap(ParentPath); //clear ParentPath
-			ParentPath = MyReconstructPath(node_current, AllNodes); //reconstruct path
-			if (node_current.GetAccName() != "start")
-			{
-				cout 	<< "Adding accession: " << node_current.GetAccName()
-						<< "  Current core size: " << ParentPath.size() + 1
-						<< "  Alleles captured: " << std::accumulate(currentstate.begin(), currentstate.end(), 0) << "/" << std::accumulate(goalstate.begin(), goalstate.end(),0) << "\n";
-			}
-		
-		
-			//exit condition 2, current state of node_current = ActiveMaxAllelesList (which is goalstate)
-			if (currentstate == goalstate) 
-			{
-				Soln = "yes"; //node_current contains the final accession necessary, trace back its parents to get minimum core
-				//trace back the ParentPath from node current to get the ideal core set
-				ParentPath = MyReconstructPath(node_current, AllNodes);
-				ParentPath.push_back(node_current.GetAccName());
-				
-				//output ordered core to terminal
-				cout << "\nThe ideal core set contains "<<ParentPath.size()<<" accessions.\n";
-				cout << "One ideal core = ";
-				for (i=0;i<ParentPath.size();++i) 
-				{
-					if (i == ParentPath.size() - 1) cout << ParentPath[i] << "\n";
-					else cout << ParentPath[i] << ",";
-				}
-				
-				//write ordered core to output file
-				ofstream output; //set up file stream for output file
-				output.open(IdealFilePath);
-				output.close(); //quick open close done to clear any existing file each time program is run
-				output.open(IdealFilePath, ios::out);
-				output << "Ideal core\n(";
-				for (i=0;i<ParentPath.size();++i) 
-				{
-					if (i == ParentPath.size() - 1) output << ParentPath[i] << ")\n";
-					else output << ParentPath[i] << ",";
-				}
-				output.close();
+		//get node with lowest f0 (or a0 or a1 or a2) on OPENlist, call it node_current
+		node_current = OPENlist.pop();  //pop removes the best node because everything is sorted when it is pushed onto the OPENlist
+	
+		//add node_current to CLOSEDlist
+		CLOSEDlist.push(node_current);
 
-				//write sorted core to terminal
-				cout << "Sorted = ";
-				std::sort(ParentPath.begin(), ParentPath.end());
-					for (i=0;i<ParentPath.size();++i) 
-				{
-					if (i == ParentPath.size() - 1) cout << ParentPath[i] << "\n";
-					else cout << ParentPath[i] << ",";
-				}
-				
-				
-				
-				break;
+		//Display status of search
+		currentstate = node_current.GetAlleleCounts();
+		vector<std::string>().swap(ParentPath); //clear ParentPath
+		ParentPath = MyReconstructPath(node_current, AllNodes); //reconstruct path
+		if (node_current.GetAccName() != "start")
+		{
+			cout 	<< "Adding accession: " << node_current.GetAccName()
+					<< "  Current core size: " << ParentPath.size() + 1
+					<< "  Alleles captured: " << std::accumulate(currentstate.begin(), currentstate.end(), 0) << "/" << std::accumulate(goalstate.begin(), goalstate.end(),0) << "\n";
+		}
+
+		//exit condition 2, current state of node_current = ActiveMaxAllelesList (which is goalstate)
+		if (currentstate == goalstate) 
+		{
+			Soln = "yes"; //node_current contains the final accession necessary, trace back its parents to get minimum core
+			//trace back the ParentPath from node current to get the ideal core set
+			ParentPath = MyReconstructPath(node_current, AllNodes);
+			ParentPath.push_back(node_current.GetAccName());
+			
+			//output ordered core to terminal
+			cout << "\nThe ideal core set contains "<<ParentPath.size()<<" accessions.\n";
+			cout << "One ideal core = ";
+			for (i=0;i<ParentPath.size();++i) 
+			{
+				if (i == ParentPath.size() - 1) cout << ParentPath[i] << "\n";
+				else cout << ParentPath[i] << ",";
 			}
-		
-			//generate each possible node_successor that can come after node_current.
-			//successors include anything not in node_current's parent path, or on CLOSEDlist
+			
+			//write ordered core to output file
+			ofstream output; //set up file stream for output file
+			output.open(IdealFilePath);
+			output.close(); //quick open close done to clear any existing file each time program is run
+			output.open(IdealFilePath, ios::out);
+			output << "Ideal core\n(";
+			for (i=0;i<ParentPath.size();++i) 
+			{
+				if (i == ParentPath.size() - 1) output << ParentPath[i] << ")\n";
+				else output << ParentPath[i] << ",";
+			}
+			output.close();
+
+			//write sorted core to terminal
+			cout << "Sorted = ";
 			std::sort(ParentPath.begin(), ParentPath.end());
-			std::sort(AccNameList.begin(), AccNameList.end());
-		
-			//elements in AccNameList but not in ParentPath are possible successors, identify with set_difference
-			vector<std::string>().swap(v); //clear v, v will receive difference in two vectors
-			std::set_difference( AccNameList.begin(), AccNameList.end(), ParentPath.begin(), ParentPath.end(), std::inserter(v, v.end()) );
-		
-			//elements in v but not in CLOSEDlist (or ParentPath) are successors
-			s = CLOSEDlist.Gets(); //get list of Nodes in CLOSEDlist
-			for (i=0;i<s.size();++i)
+			for (i=0;i<ParentPath.size();++i) 
 			{
-				nn = s[i].GetAccName(); //get the name of accession i off of CLOSEDlist
-				it = std::find(v.begin(), v.end(), nn);
-				if (it != v.end()) //if the item is found, i.e. the iterator returned by std::find is not last (which is returned if nothing is found)
-				{
-					v.erase(it); //erase the common item
-				}
+				if (i == ParentPath.size() - 1) cout << ParentPath[i] << "\n";
+				else cout << ParentPath[i] << ",";
 			}
+			break;
+		}
+
+		//generate each possible node_successor that can come after node_current.
+		//successors include anything not in node_current's parent path, or on CLOSEDlist
+		std::sort(ParentPath.begin(), ParentPath.end());
+		std::sort(AccNameList.begin(), AccNameList.end());
+
+		//elements in AccNameList but not in ParentPath are possible successors, identify with set_difference
+		vector<std::string>().swap(v); //clear v, v will receive difference in two vectors
+		std::set_difference( AccNameList.begin(), AccNameList.end(), ParentPath.begin(), ParentPath.end(), std::inserter(v, v.end()) );
+
+		//elements in v but not in CLOSEDlist (or ParentPath) are successors
+		s = CLOSEDlist.Gets(); //get list of Nodes in CLOSEDlist
+		for (i=0;i<s.size();++i)
+		{
+			nn = s[i].GetAccName(); //get the name of accession i off of CLOSEDlist
+			it = std::find(v.begin(), v.end(), nn);
+			if (it != v.end()) //if the item is found, i.e. the iterator returned by std::find is not last (which is returned if nothing is found)
+			{
+				v.erase(it); //erase the common item
+			}
+		}
+
+		/*
+		cout << "generating successors: ParentPath=";
+		for (i=0;i<ParentPath.size();++i) cout << ParentPath[i] << ",";
+		cout << "\n";
+		cout << "                       successors=";
+		for (i=0;i<v.size();++i) cout << v[i] << ",";
+		cout << "\n";
+		//getchar();
+		*/
 		
-				/*
-				cout << "generating successors: ParentPath=";
-				for (i=0;i<ParentPath.size();++i) cout << ParentPath[i] << ",";
-				cout << "\n";
-				cout << "                       successors=";
-				for (i=0;i<v.size();++i) cout << v[i] << ",";
-				cout << "\n";
-				//getchar();
-				*/
+		//create a Node for each successor, make node_current its parent
+		for (i=0;i<v.size();++i)
+		{
+			//find the node in AllNodes, change Parent to node_current.GetAccName()
+			nn = v[i];  //get the successor node's AccName
+			itn = std::find_if( AllNodes.begin(), AllNodes.end(), std::bind2nd(FindNodeViaAccName(), nn) ); //find iterator in AllNodes using custom comparator
+			l = std::distance(AllNodes.begin(), itn); //convert iterator to index
 		
-			//create a Node for each successor, make node_current its parent
+			 //set the parent to node_current
+			AllNodes[l].SetParent(node_current.GetAccName());
+		}
+			
+		//update distances for each successor node, pass to OPENlist
+		OPENlist = emptyl; //clear OPENlist so you can add updated successors
+		s.clear();  //clear the vector<Node>, treated as public for input by multiple threads
+		s.resize(v.size()); //resize to number of possible successor nodes
+		
+		#pragma omp parallel if(parallelism_enabled) 
+		{
+			//declare private variables
+			vector<std::string> ParentPath;
+			vector<int> w;
+			string nn;
+			vector<Node>::iterator itn;
+			int l;
+
+			#pragma omp for
 			for (i=0;i<v.size();++i)
 			{
-				//find the node in AllNodes, change Parent to node_current.GetAccName()
+
+				//find the node in AllNodes
 				nn = v[i];  //get the successor node's AccName
 				itn = std::find_if( AllNodes.begin(), AllNodes.end(), std::bind2nd(FindNodeViaAccName(), nn) ); //find iterator in AllNodes using custom comparator
 				l = std::distance(AllNodes.begin(), itn); //convert iterator to index
-			
-				 //set the parent to node_current
-				AllNodes[l].SetParent(node_current.GetAccName());
-			}
 
+				//set AlleleCounts to unique alleles at all loci in ParentPath of node_current + this successor
+				ParentPath.clear();
+				ParentPath.resize(node_current.Getf0() + 1);
+				ParentPath = MyReconstructPathII(AllNodes[l], AllNodes);
 
-		
-				
-				
-			//update distances for each successor node, pass to OPENlist
-			OPENlist = emptyl; //clear OPENlist so you can add updated successors
-			s.clear();  //clear the vector<Node>, treated as public for input by multiple threads
-			s.resize(v.size()); //resize to number of possible successor nodes
-			
-			#pragma omp parallel if(parallelism_enabled) 
-			{
-				//declare private variables
-				vector<std::string> ParentPath;
-				vector<int> w;
-				string nn;
-				vector<Node>::iterator itn;
-				int l;
-				
-				#pragma omp for
-				for (i=0;i<v.size();++i)
-				{
-				
-					//find the node in AllNodes
-					nn = v[i];  //get the successor node's AccName
-					itn = std::find_if( AllNodes.begin(), AllNodes.end(), std::bind2nd(FindNodeViaAccName(), nn) ); //find iterator in AllNodes using custom comparator
-					l = std::distance(AllNodes.begin(), itn); //convert iterator to index
-					
-					//set AlleleCounts to unique alleles at all loci in ParentPath of node_current + this successor
-					ParentPath.clear();
-					ParentPath.resize(node_current.Getf0() + 1);
-					ParentPath = MyReconstructPathII(AllNodes[l], AllNodes);
-					
-		
-						/*
-						cout << "AlleleCounts for " << nn << " before updating: ";
-						w = AllNodes[l].GetAlleleCounts();
-						for (int j=0;j<w.size();++j) cout << w[j] << ",";
-						cout << "\n";
-						*/
-		
-					ParentPath.push_back(nn);//adds this successor to ParentPath
-					
-						/*
-						cout << "ParentPath for successor "<<AllNodes[l].GetAccName() << ":";
-						for (int j=0;j<ParentPath.size();++j) cout << ParentPath[j] << ",";
-						cout << "\n";
-						*/
-
-					w = MyGetUpdatedAlleleCounts(ParentPath, AllNodes, RefPloidyList); //calculate allele counts for ParentPath + this successor
-					AllNodes[l].SetAlleleCounts(w); //set new prospective allele counts
-
-						/*
-						cout << "AlleleCounts for " << nn << " after updating: ";
-						w = AllNodes[l].GetAlleleCounts();
-						for (int j=0;j<w.size();++j) cout << w[j] << ",";
-						cout << "\n";
-						*/
-
-					//recalculate distances for node given new parent
-					MyCalculatef(AllNodes[l], AllNodes, goalstate, RefPloidyList, AlleleFrequencies); //AllNodes[l] updated as reference
-
-				
-					//accumulate updated nodes into a single vector, to be pushed onto OPENlist later
-					s[i] = AllNodes[l];
-					
-				/*#pragma omp critical
-					//add node to OPENlist, automatically sorting so best is at end
-					OPENlist.push(AllNodes[l]); 
-					cout << "AllNodes[l].GetAccName() = "<<AllNodes[l].GetAccName()<<"\n";
+				/*
+				cout << "AlleleCounts for " << nn << " before updating: ";
+				w = AllNodes[l].GetAlleleCounts();
+				for (int j=0;j<w.size();++j) cout << w[j] << ",";
+				cout << "\n";
 				*/
+		
+				ParentPath.push_back(nn);//adds this successor to ParentPath
+
+				/*
+				cout << "ParentPath for successor "<<AllNodes[l].GetAccName() << ":";
+				for (int j=0;j<ParentPath.size();++j) cout << ParentPath[j] << ",";
+				cout << "\n";
+				*/
+
+				w = MyGetUpdatedAlleleCounts(ParentPath, AllNodes, RefPloidyList); //calculate allele counts for ParentPath + this successor
+				AllNodes[l].SetAlleleCounts(w); //set new prospective allele counts
+
+				/*
+				cout << "AlleleCounts for " << nn << " after updating: ";
+				w = AllNodes[l].GetAlleleCounts();
+				for (int j=0;j<w.size();++j) cout << w[j] << ",";
+				cout << "\n";
+				*/
+
+				//recalculate distances for node given new parent
+				MyCalculatef(AllNodes[l], AllNodes, goalstate, RefPloidyList, AlleleFrequencies); //AllNodes[l] updated as reference
+
+				//accumulate updated nodes into a single vector, to be pushed onto OPENlist later
+				s[i] = AllNodes[l];
+
 				}
-		
 			}//end pragma omp parallel if
-		
+
 			//add vector of updated nodes onto OPENlist via .pushs, which sorts them properly
 			OPENlist.pushs(s);
-				
-		
-		
 		}
-	
-/*	if (Soln == "no") cout << "Sorry, there is no solution.\n";
-	else if (Soln == "yes")
-	{
-		//trace back the ParentPath from node current to get the ideal core set
-		ParentPath = MyReconstructPath(node_current, AllNodes);
-		ParentPath.push_back(node_current.GetAccName());
-		std::sort(ParentPath.begin(), ParentPath.end());
-		cout << "The ideal core set contains "<<ParentPath.size()<<" accessions.\n";
-		cout << "One ideal core = ";
-		for (i=0;i<ParentPath.size();++i) cout << ParentPath[i] << ",";
-		cout << "\n";
-	}
-*/	
-	//} //end pragma omp parallel if
-
-	
-	
-	
-	
-	
 	return 0;
-}	
+}

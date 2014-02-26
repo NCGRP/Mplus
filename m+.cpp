@@ -1,17 +1,4 @@
-/*#include <sstream>
-#include <iostream>
-#include <iterator>
-#include <fstream>
-#include <math.h>
-#include <vector>
-#include <string>
-#include <numeric>
-#include <time.h>
-#include <omp.h>
-#include <algorithm>
-*/
 #include "m+.hpp"
-//using namespace std;
 
 
 /*
@@ -115,8 +102,8 @@ int MyProcessVarFile(char* VarFilePath, vector<int>& AllColumnIDList, vector<std
     std::string foo;
     vector<std::string> foovector;
     int k;
+    
     int i=0; // i is the row number
-	
 	std::ifstream infile;
 	infile.open(VarFilePath);
     while( !infile.eof() ) // To get all the lines.
@@ -144,8 +131,8 @@ int MyProcessVarFile(char* VarFilePath, vector<int>& AllColumnIDList, vector<std
 			}
 		}
 	     
-	i++;
-	foovector.clear();  //zero vector foovector
+		i++;
+		foovector.clear();  //zero vector foovector
     }
 	
 	infile.close();
@@ -209,29 +196,7 @@ int MyProcessVarFile(char* VarFilePath, vector<int>& AllColumnIDList, vector<std
 			cout << "ERROR:  Some loci are described as both reference and target.  Please check your var file. Quitting...\n\n";
 			exit (EXIT_FAILURE);
 		}
-		
 	}
-	/*//print out ColKeyToAllAlleleByPopList
-	cout << "ColKeyToAllAlleleByPopList\n";
-	for (i=0;i<ColKeyToAllAlleleByPopList.size();++i)
-	{
-		cout << "Locus "<<UniqLociNameList[i]<< " {";
-		for (k=0;k<ColKeyToAllAlleleByPopList[i].size();++k)
-		{
-			cout<<ColKeyToAllAlleleByPopList[i][k]<<",";
-		}
-		cout << "\n";
-	}
-	/*
-	
-	//print out ReferenceOrTargetKey
-	for (i=0;i<ReferenceOrTargetKey.size();++i)
-	{
-		cout << ReferenceOrTargetKey[i] << "\n";
-	}	
-	
-	getchar();
-	*/
 	return 0;
 }
 
@@ -259,12 +224,7 @@ char * MyBigRead(char* DatFilePath)
 	result = fread (buffer,1,lSize,pFile);
 	if (result != lSize) {fputs ("Reading error",stderr); exit (3);}
 
-	/* the whole file is now loaded in the memory buffer. */
-	//foo(buffer, result);
-	// terminate
-
 	fclose (pFile);
-	//free (buffer);
 	return buffer;
 }
 
@@ -277,189 +237,7 @@ void MyUpdateActiveAlleleList(vector<vector<std::string> >& ActiveAlleleList, in
 	OldAlleles = ActiveAlleleList[CurrItemIndex]; //pull out the list of alleles currently held for this locus
 	OldAlleles.push_back (NewAllele); //add the new allele to the existing list of alleles for the current locus
 	ActiveAlleleList[CurrItemIndex] = OldAlleles; //update ActiveAlleleList by reference
-	
-	/*cout << "OldAlleles\n";
-	for (j=0;j<OldAlleles.size();j++)
-	{
-		cout << OldAlleles[j] << ",";
-	}
-	cout << "\n";
-	*/
 }
-
-int MyProcessDatFile(char* DatFilePath, vector<int> ActiveColumnIDList, vector<std::string> ActiveLociNameList, vector<vector<vector<std::string> > >& ActiveAlleleByPopList, vector<std::string>& FullAccessionNameList, vector<std::string>& IndivPerPop, vector<std::string>& AllAlleles)
-{
-
-
-//declare variables
-    std::string foo;
-    vector<std::string> foovector;
-    std::string NewPopID;
-    std::string OldPopID="0";
-    std::string OldLocusName;
-    std::string NewAllele;
-    std::string CurrLocusName;
-    vector<std::string> LocusNames;
-    int i=0; //i is the row number
-    int j=0;
-    int q=0;
-    int CurrItemIndex;
-    vector<vector<std::string> > ActiveAlleleList;
-    vector<std::string> OldAlleles;
-    vector<std::string> TempList;
-    vector<vector<std::string> > TempList2d;
-    vector<std::string> FilteredData;
-    vector<std::string> ListToFilter;
-    std::string IsNewPop = "no";
-    vector<std::string>::iterator it;
-
-
-
-	//read in the dat file line by line	
-	std::ifstream infile;
-	infile.open(DatFilePath);
-    while( !infile.eof() ) // To get all the lines.
-    {
-	    if (IsNewPop == "no") //get a new line
-	    {
-			vector<std::string>().swap(foovector); //clear foovector
-			foo.clear(); //clear foo
-			
-			std::getline (infile, foo); // Saves the line in foo.
-			if (infile.eof()) break;//this is a crappy workaround to exit before extra loop after eof is encountered
-
-			//split on whitespace
-			foovector = split(foo);
-
-			//extract population identifier from first column
-			NewPopID = foovector[0];
-			IndivPerPop.push_back(foovector[0]); //add the pop ID to a list to calc pop sizes later
-			
-		}
-		else if (IsNewPop == "yes") IsNewPop = "no"; //reset it to get a new line unless it is a new allele
-	
-		
-		//determine whether the current line belongs to the current population, or is the first from a new population
-		if (NewPopID == OldPopID)
-		{
-			//extract the alleles, by locus, for a single population into a list
-			OldLocusName = "starting value";
-			for (i=0;i<ActiveColumnIDList.size();i++)
-			{
-				//get the current allele
-				NewAllele = foovector[ActiveColumnIDList[i]];
-				
-				AllAlleles.push_back(NewAllele); //add the allele to the list of all alleles
-								
-				//get the name of the current locus
-				CurrLocusName = ActiveLociNameList[i];
-				
-				/*
-				cout << "ActiveColumnID=" << ActiveColumnIDList[i] << "\t";
-				cout << "NewAllele=" << NewAllele << "\t";
-				cout << "CurrLocusName=" << CurrLocusName << "\n";
-				*/
-				
-				//test whether you already have a list item for this locus, 
-				//count command tests whether CurrLocusName appears in LocusNames
-				it = std::find(LocusNames.begin(), LocusNames.end(), CurrLocusName);
-				if (it != LocusNames.end()) //you have found a match, convert iterator to index, update
-				{
-					CurrItemIndex = std::distance(LocusNames.begin(), it); //convert iterator to index
-					MyUpdateActiveAlleleList(ActiveAlleleList, CurrItemIndex, NewAllele); //update ActiveAlleleList with the new allele by reference
-				}
-				
-				/*
-				if ( std::count (LocusNames.begin(), LocusNames.end(), CurrLocusName) >= 1) //you are adding to an existing locus
-				{
-					//figure out what gene you are in, then add NewAllele to the appropriate item in the ActiveAlleleList
-					for (j=0; j<LocusNames.size(); j++)
-					{
-						if (LocusNames[j] == CurrLocusName)
-						{
-							CurrItemIndex = j;
-							break;	
-						}
-					}
-					MyUpdateActiveAlleleList(ActiveAlleleList, CurrItemIndex, NewAllele); //update ActiveAlleleList with the new allele by reference
-				}
-				
-				*/
-				else //it is new locus
-				{
-					//create a new list item, and add current allele to it. other alleles will be added later in first part of 'if'
-					TempList.push_back (NewAllele); //add the single allele to a vector
-					ActiveAlleleList.push_back (TempList);  //add the vector as a new list item
-					vector<std::string>().swap(TempList); //clear TempList
-					CurrItemIndex = ActiveAlleleList.size();
-					
-					//build a list of the locus names
-					LocusNames.push_back (ActiveLociNameList[i]);
-				}
-				
-				//pass current locus name to old locus name
-				OldLocusName = CurrLocusName;
-				CurrLocusName = ""; //zero it out
-			}
-			
-			//update values
-			OldPopID = NewPopID;
-			NewPopID = "0";
-		}
-		else //you have encountered a new population
-		{
-			//add this population name to the AccessionNameList
-			FullAccessionNameList.push_back (NewPopID);
-			
-			//process the list of alleles for the prior population, eliminate redundancies and missing data
-			vector<std::string>().swap(TempList); //clear TempList
-			for (q=0;q<ActiveAlleleList.size();q++)
-			{
-				ListToFilter = ActiveAlleleList[q];
-				FilteredData = MyFilterDuplicates(ListToFilter);	
-				TempList2d.push_back (FilteredData);
-			}
-			
-			ActiveAlleleList = TempList2d;
-			
-			//put the allele list you've just created for the prior population into the final list
-			ActiveAlleleByPopList.push_back (ActiveAlleleList);
-			
-			//zero out old variables so you can fill them again with the data from the new population
-			vector<vector<std::string> >().swap(TempList2d); //clear TempList2d
-			vector<std::string>().swap(ListToFilter); //clear ListToFilter
-			vector<std::string>().swap(LocusNames); //clear LocusNames
-			vector<vector<std::string> >().swap(ActiveAlleleList); //clear ActiveAlleleList
-			OldPopID = NewPopID;
-			
-			//set up a switch that prevents acquiring a new line when you pop back up to the start of the 'while'
-			IsNewPop = "yes";
-		}
-	}
-
-
-	//process the list of alleles for the very last population, eliminate redundancies and missing data
-	vector<std::string>().swap(TempList); //clear TempList
-	for (q=0;q<ActiveAlleleList.size();q++)
-	{
-		ListToFilter = ActiveAlleleList[q];
-		FilteredData = MyFilterDuplicates(ListToFilter);	
-		TempList2d.push_back (FilteredData);
-	}
-			
-	ActiveAlleleList = TempList2d;
-			
-	//add the final set of alleles for the very last population into the main list
-	ActiveAlleleByPopList.push_back (ActiveAlleleList);
-
-	//correct the length of the main list because the first item ends up empty
-	ActiveAlleleByPopList.erase( ActiveAlleleByPopList.begin() );
-
-	
-	//ActiveAlleleByPopList and FullAccessionNameList references have now been completely updated
-	return 0;
-}
-
 
 //reduces the master vector of all alleles into subsets containing reference or target loci only
 int MyReduceToRef(vector<vector<vector<std::string> > > AllAlleleByPopList, vector<int> ReferenceOrTargetKey, vector<vector<vector<std::string> > >& ActiveAlleleByPopList, vector<vector<vector<std::string> > >& TargetAlleleByPopList)
@@ -504,12 +282,9 @@ int MyReduceToRef(vector<vector<vector<std::string> > > AllAlleleByPopList, vect
 	return 0;
 }
 
-
 int MyProcessDatFileIII(char* DatFilePath, vector<int> AllColumnIDList, vector<std::string> AllLociNameList, vector<vector<int> > ColKeyToAllAlleleByPopList, vector<vector<set<std::string> > >& AllAlleleByPopListSet, vector<std::string>& FullAccessionNameList, vector<std::string>& IndivPerPop, vector<std::string>& AllAlleles)
 {
-
-
-//declare variables
+	//declare variables
     std::string foo;
     vector<std::string> foovector;
     std::string OldLocusName;
@@ -531,7 +306,6 @@ int MyProcessDatFileIII(char* DatFilePath, vector<int> AllColumnIDList, vector<s
     std::string OldPopID = "init*@#rt4"; //use an unlikely population name for the initialization value
     vector<std::string> TempList;
     std::string NewAllele;
-
 
 	//read the whole file into a buffer using fread
     char * buffer;
@@ -616,8 +390,6 @@ int MyProcessDatFileIII(char* DatFilePath, vector<int> AllColumnIDList, vector<s
 	}
 }
 
-
-
 //removes duplicate alleles and missing data (9999) from the supplied vector
 vector<std::string> MyFilterDuplicates(vector<std::string> ListToFilter)
 {
@@ -644,13 +416,11 @@ vector<std::string> MyFilterDuplicatesII(vector<std::string> ListToFilter)
 //returns maximum number of alleles possible at each locus for active and target
 vector<int> MyGetMaxs(vector<vector<vector<std::string> > > ActiveAlleleByPopList)
 {
-	
 	int i, j, k;
 	vector<int> ActiveMaxAllelesList;
 	vector<std::string> CurrLoc;
 	set<std::string> NewSet;
 	
-//new way with set
 	for (i=0;i<ActiveAlleleByPopList[0].size();++i)
 	{
 		NewSet.clear();
@@ -660,14 +430,11 @@ vector<int> MyGetMaxs(vector<vector<vector<std::string> > > ActiveAlleleByPopLis
 												   //get locus i for population j
 			for (k=0;k<CurrLoc.size();++k)
 			{
-				NewSet.insert(CurrLoc[k]);	
+				NewSet.insert(CurrLoc[k]);	//place alleles into set to eliminate redundancies
 			}
 		}
 		ActiveMaxAllelesList.push_back(NewSet.size()); //the set size after adding all populations for locus i is the maximum number of alleles
 	}
-	
-	//for (i=0;i<ActiveMaxAllelesList.size();i++) cout << "ActiveMaxAllelesList[" << i << "]=" << ActiveMaxAllelesList[i] << "\n";
-	
 	return ActiveMaxAllelesList; 
 }
 
@@ -685,7 +452,6 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 	vector<int> Mlist(NumLoci);
 	set<std::string> AlleleSet;
 
-
 	if (NumLoci == 0)
 	{
 		RandomActiveDiversity = -1; 
@@ -693,7 +459,7 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 	}
 	else
 	{
-		//fast using set
+		//use set to eliminate redundancies
 		for (i=0;i<NumLoci;i++)
 		{
 
@@ -713,16 +479,6 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 			
 			Mlist[i] = M;
 		}
-
-		
-		/*for (k=0;k<Mlist.size();++k)
-		{
-			cout << Mlist[k] << ",";
-		}
-		cout << "\n";
-		*/
-		
-		
 		
 		//5. standardize the M values to the maximum possible number of alleles at that locus, 
 		//and add them up to get final estimate of standardized allelic diversity in the core.
@@ -736,7 +492,6 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 			SADtemp = SADtemp + ( (double) Mlist[i] / (double) ActiveMaxAllelesList[i] );
 		}
 		SAD = SADtemp / NumLoci;
-		
 		
 		//calculate M by simply adding up the Mlist
 		//M = std::accumulate(Mlist.begin(),Mlist.end(),0);  <--std::accumulate is unreliable so it has been removed
@@ -921,8 +676,6 @@ void MyCalculateAlleleFrequencies(vector<std::pair<std::string, vector<std::stri
 	set<std::string> AlleleSet;
 
 	Alfreq laf; //locusname, allelenames, frequencies
-	//vector<vector<double> > freqvec(RefAllelesByLocus.size()); //to set size of struct frequencies
-	//laf.frequencies = freqvec;
 	static const struct Alfreq emptylaf; //this will be used to zero struct between loops
 	
 	for (i=0;i<RefAllelesByLocus.size();++i)
@@ -935,7 +688,6 @@ void MyCalculateAlleleFrequencies(vector<std::pair<std::string, vector<std::stri
 		//get locus name, add to struct
 		b = RefAllelesByLocus[i].first;
 		laf.locusname = b;
-		//cout << laf.locusname << "\n";
 		
 		//compress list of all alleles at this locus into unique alleles
 		AllAlleles = RefAllelesByLocus[i].second; //get the vector of all alleles at locus i
@@ -953,9 +705,6 @@ void MyCalculateAlleleFrequencies(vector<std::pair<std::string, vector<std::stri
 			z = count(AllAlleles.begin(), AllAlleles.end(), b);
 			freq = double(z)/double(AllAlleles.size());
 			laf.frequencies.push_back(freq); //add allele frequency to struct
-			
-			//cout << " b="<< b<<" z="<<z<<"\n";
-			//cout << " laf.frequencies["<<j<<"]="<<laf.frequencies[j]<<"\n";
 		}
 		
 		AlleleFrequencies.push_back(laf);
@@ -1021,7 +770,6 @@ int main( int argc, char* argv[] )
         	Ideal = "yes";
         	IdealFilePath = argv[i+1];
 		}
- 
 	}
 	
 	//test whether all files specified on the command line exist
@@ -1048,8 +796,6 @@ int main( int argc, char* argv[] )
 		cout << "\nPlease check the command line.  Quitting...\n\n";
 		exit (EXIT_FAILURE);
 	}
-	
-	
 	
 	//print out input variables
 	cout << "Input variables:\n  VarFilePath = " << VarFilePath << "\n";
@@ -1099,7 +845,6 @@ int main( int argc, char* argv[] )
 	}
 	
 
-	
 	//PROCESS INPUT DATA
 	
 	//start the clock
@@ -1118,7 +863,6 @@ int main( int argc, char* argv[] )
 	vector<int> PloidyList;
 	vector<std::string> UniqLociNamesList;
 
-	
 	MyProcessVarFile(VarFilePath, AllColumnIDList, AllLociNameList, ActiveColumnIDList, ActiveLociNameList, TargetColumnIDList, TargetLociNameList, ColKeyToAllAlleleByPopList, ReferenceOrTargetKey, PloidyList, UniqLociNamesList ); 
 	//all but first variable above are updated as references in MyProcessVarFile
 
@@ -1150,11 +894,8 @@ int main( int argc, char* argv[] )
 			}
 		}
 
-	
 	//process .dat file
 	cout << "\nProcessing .dat file...\n";
-	
-	//.dat file, all loci
 	
 	vector<std::string> FullAccessionNameList;
 	vector<std::string> IndivPerPop;
@@ -1169,7 +910,6 @@ int main( int argc, char* argv[] )
 	// { { {pop1,loc1 alleles},{pop1,loc2 alleles},...}, { {pop2,loc1 alleles},{pop2,loc2 alleles},...} } }
 	//sized to number of populations, number of loci.  last level left unsized
 	
-	
 		/*//Print out lists of unique All alleles from AllAlleleByPopListSet
 		set<std::string> si;
 		for (i=0;i<AllAlleleByPopListSet.size() ;i++)
@@ -1180,10 +920,9 @@ int main( int argc, char* argv[] )
 				cout << "Locus " << j << "\n";
 				si = AllAlleleByPopListSet[i][j];
 				for (std::set<std::string>::iterator it=si.begin(); it!=si.end(); ++it)
-    				cout << *it << ",";
+					cout << *it << ",";
 				cout << "\n";
 			}
-		
 		}*/
 
 	//convert set to vector for further processing
@@ -1195,39 +934,6 @@ int main( int argc, char* argv[] )
 			AllAlleleByPopList[i][j] = ttvec;
 		}
 	}
-	
-	
-/*	//switch for old MyProcessDatFile
-	vector<vector<vector<std::string> > > AllAlleleByPopList; //structure of this 3D vector is:
-	// { { {pop1,loc1 alleles},{pop1,loc2 alleles},...}, { {pop2,loc1 alleles},{pop2,loc2 alleles},...} } }
-	MyProcessDatFile(DatFilePath, AllColumnIDList, AllLociNameList, AllAlleleByPopList, FullAccessionNameList, IndivPerPop, AllAlleles);
-	//AllAlleleByPopList, FullAccessionNameList, IndivPerPop, AllAlleles updated as reference
-*/	
-		
-		/*//Print out FullAccessionNameList
-		cout << "\n\nPopulation names\n";
-		for (i=0; i<FullAccessionNameList.size();i++) cout << FullAccessionNameList[i] << "\n";
-		
-		//Print out lists of unique All alleles from AllAlleleByPopList
-		for (i=0;i<AllAlleleByPopList.size() ;i++)
-		{
-			cout << "Population " << FullAccessionNameList[i] << "\n";
-			for (j=0;j<AllAlleleByPopList[i].size();j++)
-			{
-				cout << "Locus " << j << "\n";
-				for (k=0;k<AllAlleleByPopList[i][j].size();k++)
-				{
-					cout << AllAlleleByPopList[i][j][k] << ",";
-				}
-				cout << "\n";
-			}
-		
-		}*/
-	
-	
-	
-	
-	
 	
 	//sort AllAlleleByPopList into reference and target loci lists
 	vector<vector<vector<std::string> > > ActiveAlleleByPopList; 
@@ -1272,8 +978,6 @@ int main( int argc, char* argv[] )
 			}
 		}
 		*/
-
-	
 		
 
 
@@ -1288,7 +992,6 @@ int main( int argc, char* argv[] )
 		exit (EXIT_FAILURE);
 	}
 
-	
 	//get number of loci
 	int NumLoci = ActiveAlleleByPopList[1].size();
 	
@@ -1319,26 +1022,25 @@ int main( int argc, char* argv[] )
 	vector<Alfreq> AlleleFrequencies;//(RefAllelesByLocus.size());  //declare vector of struct Alfreq
 	MyCalculateAlleleFrequencies(RefAllelesByLocus, AlleleFrequencies);
 	
-	/*
-	//print out structs containing allele frequencies
-	Alfreq laf;
-	vector<std::string> anames;
-	vector<double> frqs;
-	for (i=0;i<AlleleFrequencies.size();++i)
-	{
-		cout << AlleleFrequencies[i].locusname << "\n";
-		
-		laf = AlleleFrequencies[i];
-		anames = AlleleFrequencies[i].allelenames;
-		frqs = AlleleFrequencies[i].frequencies;
-		for (j=0;j<anames.size();++j)
+		/*
+		//print out structs containing allele frequencies
+		Alfreq laf;
+		vector<std::string> anames;
+		vector<double> frqs;
+		for (i=0;i<AlleleFrequencies.size();++i)
 		{
-			cout << " " << anames[j];
-			cout << " " << frqs[j] << "\n";
+			cout << AlleleFrequencies[i].locusname << "\n";
+		
+			laf = AlleleFrequencies[i];
+			anames = AlleleFrequencies[i].allelenames;
+			frqs = AlleleFrequencies[i].frequencies;
+			for (j=0;j<anames.size();++j)
+			{
+				cout << " " << anames[j];
+				cout << " " << frqs[j] << "\n";
+			}
 		}
-	}
-	*/
-	
+		*/
 	
 	//from list of all accession names, generate an index that is used later to locate alleles belonging to specific accessions
 	vector<int> AccessionNameList;
@@ -1367,14 +1069,11 @@ int main( int argc, char* argv[] )
 	//reverse sort KernelAccessionIndex, necessary later
 	std::sort(KernelAccessionIndex.begin(), KernelAccessionIndex.end(), std::greater<int>());
 		
-
-	
 	//get maximum number of alleles possible at each locus for active and target
 	vector<int> ActiveMaxAllelesList, TargetMaxAllelesList;
 	ActiveMaxAllelesList = MyGetMaxs(ActiveAlleleByPopList);
 	TargetMaxAllelesList = MyGetMaxs(TargetAlleleByPopList);
 		
-	
 	//stop the clock
 	time (&endi);
 	double dif = difftime (endi,starti);
@@ -1383,16 +1082,6 @@ int main( int argc, char* argv[] )
 	cout << "Number of accessions = " << NumberOfAccessions << ", Number of loci = " << NumLoci;
 	if (Kernel == "yes") cout << ", Number of kernel accessions = " << KernelAccessionList.size() << "\n\n";
 	else cout << "\n\n";
-	
-
-
-
-
-    /*cout << "ActiveMaxAllelesList:\n";
-	for (i=0; i<ActiveMaxAllelesList.size(); i++) cout << ActiveMaxAllelesList[i] << ",\n";
-    cout << "\nTargetMaxAllelesList:\n";
-	for (i=0; i<TargetMaxAllelesList.size(); i++) cout << TargetMaxAllelesList[i] << ",\n";
-	*/
 	
 	
 	//PERFORM A*
@@ -1414,7 +1103,6 @@ int main( int argc, char* argv[] )
 		double dif = difftime (end1,start1);
 		cout << "\nA* search complete.  Elapsed time = "<< dif << " seconds.\n\n";
 	}	
-	
 	
 	
 	//PERFORM M+
@@ -1439,16 +1127,10 @@ int main( int argc, char* argv[] )
 			}
 		}
 		
-
 		//set up vectors to fill with results
 		double V1 = l; //(MaxCoreSize - MinCoreSize + 1)*NumReplicates; //number of rows in output vectors
 		vector<vector<double> > Results(V1, vector<double>(9)); //will contain numerical results
 		vector<vector<string> > Members(V1); //will contain core set members
-		
-	
-	
-
-
 	
 		//compile as parallel or not?
 		int parallelism_enabled = 1; //0=no, not 0 = yes
@@ -1505,8 +1187,6 @@ int main( int argc, char* argv[] )
 			RecoveryFile << "core size	random reference diversity	optimized reference diversity	random target diversity	optimized target diversity	alt random reference diversity	alt optimized reference diversity	alt random target diversity	alt optimized target diversity	core members" << "\n";
 			RecoveryFile.close();
 
-
-
 			//do parallelization so that each rep by core size combo can be
 			//handled by a distinct thread.  this involves figuring out the total
 			//number of reps*coresizes taking into account the SamplingFreq
@@ -1518,345 +1198,302 @@ int main( int argc, char* argv[] )
 				{
 					r = MinCoreSize + ((rnr / NumReplicates) * SamplingFreq); //int rounds to floor
 					nr = rnr % NumReplicates; // modulo
-				
-				
-
-			/*old parallelization, outer loop only, if reinstated, make sure closing braces are corrected too
-			#pragma omp for
-				for (int r=MinCoreSize;r<MaxCoreSize+1;r=r+SamplingFreq)
-				{
-					//cout << "  CoreSize = " << r << "\n";
-
-					for (int nr=0;nr<NumReplicates;nr++)
+					//develop random starting core set
+					//clear AccessionsInCore and set size
+					AccessionsInCore.clear();
+					AccessionsInCore.resize(r);
+					
+					//add kernel accessions to core, if necessary
+					if (Kernel == "yes")
 					{
-			*/		
-
-
-						//cout << "    rep " << nr + 1 << "\n";
-						//develop random starting core set
-						//clear AccessionsInCore and set size
-						AccessionsInCore.clear();
-						AccessionsInCore.resize(r);
-					
-						//add kernel accessions to core, if necessary
-						if (Kernel == "yes")
-						{
-							for (int i=0;i<KernelAccessionIndex.size();i++)
-							{
-								AccessionsInCore[i] = KernelAccessionIndex[i];
-							}
-						}
-
-						//clear TempList and set size					
-						TempList.clear();
-						TempList.resize( AccessionNameList.size() );
-						//vector<int>().swap(AccessionsInCore); //clear AccessionsInCore
-						//vector<int>().swap(TempList); //clear TempList
-					
-						//set list of available accessions in TempList, by erasing those already in the core
-						TempList = AccessionNameList;
-						//expunge the kernel accessions, so they are not available for random addition below
-						//KernelAccessionIndex has been reverse sorted so you don't go outside range after automatic resize by .erase
 						for (int i=0;i<KernelAccessionIndex.size();i++)
 						{
-							b = KernelAccessionIndex[i];
-							TempList.erase(TempList.begin()+b);
+							AccessionsInCore[i] = KernelAccessionIndex[i];
 						}
-				
-						//randomly add accessions until r accessions are in the core. if there is a kernel, include those (done above)
-						//plus additional, randomly selected accessions, until you get r accessions
-						//for (int i=0;i<r;i++)
-						for (int i=KernelAccessionIndex.size();i<r;i++)
-						{
-							//choose an accession randomly from those available
-							RandAcc = rand() % TempList.size();
-							//add it to the list
-							AccessionsInCore[i] = TempList[RandAcc];
-							//AccessionsInCore.push_back(TempList[RandAcc]);
-						
-							//remove it from the list of available accessions
-							TempList.erase(TempList.begin()+RandAcc);
-						}
-			
+					}
+
+					//clear TempList and set size					
+					TempList.clear();
+					TempList.resize( AccessionNameList.size() );
+					//vector<int>().swap(AccessionsInCore); //clear AccessionsInCore
+					//vector<int>().swap(TempList); //clear TempList
 					
-						//assemble genotypes for random core and calculate diversity
-						//1. put together initial list of active alleles
-						//vector<vector<vector<std::string> > >().swap(CoreAlleles); //clear CoreAlleles
+					//set list of available accessions in TempList, by erasing those already in the core
+					TempList = AccessionNameList;
+					//expunge the kernel accessions, so they are not available for random addition below
+					//KernelAccessionIndex has been reverse sorted so you don't go outside range after automatic resize by .erase
+					for (int i=0;i<KernelAccessionIndex.size();i++)
+					{
+						b = KernelAccessionIndex[i];
+						TempList.erase(TempList.begin()+b);
+					}
+				
+					//randomly add accessions until r accessions are in the core. if there is a kernel, include those (done above)
+					//plus additional, randomly selected accessions, until you get r accessions
+					//for (int i=0;i<r;i++)
+					for (int i=KernelAccessionIndex.size();i<r;i++)
+					{
+						//choose an accession randomly from those available
+						RandAcc = rand() % TempList.size();
+						//add it to the list
+						AccessionsInCore[i] = TempList[RandAcc];
+						//AccessionsInCore.push_back(TempList[RandAcc]);
+					
+						//remove it from the list of available accessions
+						TempList.erase(TempList.begin()+RandAcc);
+					}
+			
+					//assemble genotypes for random core and calculate diversity
+					//1. put together initial list of active alleles
+					//vector<vector<vector<std::string> > >().swap(CoreAlleles); //clear CoreAlleles
+					CoreAlleles.clear();
+					CoreAlleles.resize( AccessionsInCore.size() );
+					for (int i=0;i<AccessionsInCore.size();i++)
+					{
+						b = AccessionsInCore[i];
+						//CoreAlleles.push_back(ActiveAlleleByPopList[b]);
+						CoreAlleles[i] = ActiveAlleleByPopList[b];
+					}
+
+					//2. calculate diversity from random selection at active loci
+					//vector<vector<vector<std::string> > >().swap(AlleleList); //clear AlleleList
+					AlleleList.clear();
+					AlleleList = CoreAlleles;
+			
+					MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
+					//in MyCalculateDiversity, latter two variables are updated as references
+					//save them away in non-updated variables
+					StartingRandomActiveDiversity = RandomActiveDiversity;
+					StartingAltRandomActiveDiversity = AltRandomActiveDiversity;
+
+					//3. calculate diversity from random selection at target loci
+					//vector<vector<vector<std::string> > >().swap(AlleleList); //clear AlleleList
+					AlleleList.clear();
+					AlleleList.resize( AccessionsInCore.size() );
+					for (int j=0;j<AccessionsInCore.size();j++)
+					{
+						b = AccessionsInCore[j];
+						//AlleleList.push_back(TargetAlleleByPopList[b]);
+						AlleleList[j] = TargetAlleleByPopList[b];
+					}
+					MyCalculateDiversity(AlleleList, TargetMaxAllelesList, Standardize, RandomTargetDiversity, AltRandomTargetDiversity);
+
+		
+					//BEGIN OPTIMIZATION
+					StartingDiversity = 0; //this is the diversity recovered during the prior iteration.
+					plateau = 0; //count of the number of times you have found the best value, evaluates when you are
+								 //stuck on a plateau, assuming acceptance criterion allows downhill steps
+					//this is the iterations step, now an indefinite loop that is broken when 
+					//no improvement is made during the course of the optimization algorithm
+					//If r = kernel size = MinCoreSize then do no optimization but still calculate all variables.
+					if (KernelAccessionIndex.size() == r)
+					{
+						//assemble genotypes for core
+						//1. put together initial list
 						CoreAlleles.clear();
-						CoreAlleles.resize( AccessionsInCore.size() );
-						for (int i=0;i<AccessionsInCore.size();i++)
+						CoreAlleles.resize(r);
+						for (int i=0;i<r;i++)
 						{
 							b = AccessionsInCore[i];
-							//CoreAlleles.push_back(ActiveAlleleByPopList[b]);
 							CoreAlleles[i] = ActiveAlleleByPopList[b];
 						}
-
-						//2. calculate diversity from random selection at active loci
-						//vector<vector<vector<std::string> > >().swap(AlleleList); //clear AlleleList
-						AlleleList.clear();
-						AlleleList = CoreAlleles;
-			
-						MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
-						//in MyCalculateDiversity, latter two variables are updated as references
-						//save them away in non-updated variables
-						StartingRandomActiveDiversity = RandomActiveDiversity;
-						StartingAltRandomActiveDiversity = AltRandomActiveDiversity;
-					
-			//cout << "RandomActiveDiversity="<<RandomActiveDiversity<<"\n";
-			//cout << "AltRandomActiveDiversity="<<AltRandomActiveDiversity<<"\n";
-
-
-						//3. calculate diversity from random selection at target loci
-						//vector<vector<vector<std::string> > >().swap(AlleleList); //clear AlleleList
-						AlleleList.clear();
-						AlleleList.resize( AccessionsInCore.size() );
-						for (int j=0;j<AccessionsInCore.size();j++)
-						{
-							b = AccessionsInCore[j];
-							//AlleleList.push_back(TargetAlleleByPopList[b]);
-							AlleleList[j] = TargetAlleleByPopList[b];
-						}
-						MyCalculateDiversity(AlleleList, TargetMaxAllelesList, Standardize, RandomTargetDiversity, AltRandomTargetDiversity);
-
-		
-		
-			//cout << "RandomTargetDiversity="<<RandomTargetDiversity<<"\n";
-			//cout << "AltRandomTargetDiversity="<<AltRandomTargetDiversity<<"\n";
-		
-
-		
-						//BEGIN OPTIMIZATION
-						StartingDiversity = 0; //this is the diversity recovered during the prior iteration.
-						plateau = 0; //count of the number of times you have found the best value, evaluates when you are
-									 //stuck on a plateau, assuming acceptance criterion allows downhill steps
-						//this is the iterations step, now an indefinite loop that is broken when 
-						//no improvement is made during the course of the optimization algorithm
-						//If r = kernel size = MinCoreSize then do no optimization but still calculate all variables.
-						if (KernelAccessionIndex.size() == r)
-						{
-								//assemble genotypes for core
-								//1. put together initial list
-								CoreAlleles.clear();
-								CoreAlleles.resize(r);
-								for (int i=0;i<r;i++)
-								{
-									b = AccessionsInCore[i];
-									CoreAlleles[i] = ActiveAlleleByPopList[b];
-								}
-							
-								AlleleList = CoreAlleles;
-							
-								MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
-								best = RandomActiveDiversity; //best is equivalent to OptimizedActiveDiversity
-								AltOptimizedActiveDiversity = AltRandomActiveDiversity;
-						}
-						else
-						{
-							//do optimization
-							while ( true )
-							{
-								//assemble genotypes for core
-								//1. put together initial list
-								CoreAlleles.clear();
-								CoreAlleles.resize(r);
-								for (int i=0;i<r;i++)
-								{
-									b = AccessionsInCore[i];
-									CoreAlleles[i] = ActiveAlleleByPopList[b];
-								}
-				
-								//2. go through all possible subsets of size r-1, one at a time, noting which is best.
-								//If there is a kernel, do not swap out any of those accessions (they are retained as the
-								//first KernelAccessionIndex.size() items in CoreAlleles).  Accomplished by starting for loop
-								//at KernelAccessionIndex.size().
-								best=0;
-								//for (int i=0;i<CoreAlleles.size();i++)
-								for (int i=KernelAccessionIndex.size();i<CoreAlleles.size();i++)
-								{
-									//remove each item consecutively from the list of all populations in the core
-									AlleleList.clear();
-									TdTempList.clear();
-							
-									TdTempList = CoreAlleles; //swap to temporary vector
-									TdTempList.erase( TdTempList.begin() + i);
-									AlleleList = TdTempList;
-					
-									TempList2.clear();
-									TempList2 = AccessionsInCore;
-									TempList2.erase(TempList2.begin() + i);
-									AccessionsInSubCore = TempList2;
-
-
-									/*Data structure for SubCoreAlleles:
-									SubCore 1..r
-										Population 1..(r-1)
-											AlleleArray 1..NumLoci		
-					
-									--3. fuse alleles from the same locus into a single array, for all accessions, for the current subcore
-									--4. assemble a list of diversity (M) for each locus separately
-									--5. standardize the M values to the maximum possible number of alleles at that locus, and add them up to get final estimate of standardized allelic diversity in the core.  then divide by the number of loci to get a number that is comparable across data sets.
-									--5.5. simultaneous to the calculation, keep track of which subcore is best
-									*/
-					
-									MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
-									nnew = RandomActiveDiversity;
-		
-									if (nnew >= best) // >= allows sideways movement during hill climbing
-									{
-										best = nnew;
-
-										BestSubCore.clear();
-										BestSubCore = AccessionsInSubCore;
-										BestSubCoreAlleles.clear();
-										BestSubCoreAlleles = AlleleList;
-									}
-								}  //for loop cycles thru all subcores
-
-								//reverse sort BestSubCore to support easy assembly of pared TempList below
-								BestSubCoreRevSorted = BestSubCore;
-								std::sort(BestSubCoreRevSorted.begin(), BestSubCoreRevSorted.end(), std::greater<int>());
-			
-								/*
-								6. take the subcore with greatest diversity and consecutively add each 
-								possible additional accession from the base collection.  find the core of size r 
-								(not r-1 subcore) that has the greatest diversity.
-
-								suppress the IDs of those accessions found in the BestSubCore from the 
-								list of all accessions to get a list of remaining accessions.*/
-								TempList = AccessionNameList;
-								for (int k=0;k<BestSubCoreRevSorted.size();k++)
-								{
-									bsc = BestSubCoreRevSorted[k];
-									TempList.erase( TempList.begin() + bsc );
-								}
 						
-								//shuffle the list of remaining accessions, so addition order is not predictable
-								std::random_shuffle (TempList.begin(), TempList.end());
-							
-								//add each remaining accession consecutively, calculate diversity, test 
-								//whether it is better than the prior one
-								best = 0;
-								for (int k=0;k<TempList.size();k++)
-								{
-									bsc = TempList[k];
-					
-									//define the core
-									TempList2 = BestSubCore;
-									TempList2.resize( TempList2.size() + 1 );
-									//TempList2.push_back(i);
-									TempList2[TempList2.size()-1] = bsc; //add new accession to last vector element
-									AccessionsInCore = TempList2;
-					
-									//assemble the allelelist for the core
-									TdTempList = BestSubCoreAlleles;
-									TdTempList.resize( TdTempList.size() + 1 );
-									//TdTempList.push_back( ActiveAlleleByPopList[i] );
-									TdTempList[TdTempList.size()-1] = ActiveAlleleByPopList[bsc];
-									AlleleList = TdTempList;
-					
-									//calculate diversity
-									MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, nnew, TempAltOptimizedActiveDiversity); 
-
-
-	//cout << nnew << "\n";
-
+						AlleleList = CoreAlleles;
+						
+						MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
+						best = RandomActiveDiversity; //best is equivalent to OptimizedActiveDiversity
+						AltOptimizedActiveDiversity = AltRandomActiveDiversity;
+					}
+					else
+					{
+						//do optimization
+						while ( true )
+						{
+							//assemble genotypes for core
+							//1. put together initial list
+							CoreAlleles.clear();
+							CoreAlleles.resize(r);
+							for (int i=0;i<r;i++)
+							{
+								b = AccessionsInCore[i];
+								CoreAlleles[i] = ActiveAlleleByPopList[b];
+							}
 				
-									//test whether current diversity is higher than the best diversity found so far
-									if (nnew >= best) // >= allows sideways movement during hill climbing
-									{
-										best = nnew;
-										bestcore = AccessionsInCore;
-										//save the alternative diversity value for the best core
-										AltOptimizedActiveDiversity = TempAltOptimizedActiveDiversity;
-									}
-				
-								}
+							//2. go through all possible subsets of size r-1, one at a time, noting which is best.
+							//If there is a kernel, do not swap out any of those accessions (they are retained as the
+							//first KernelAccessionIndex.size() items in CoreAlleles).  Accomplished by starting for loop
+							//at KernelAccessionIndex.size().
+							best=0;
+							//for (int i=0;i<CoreAlleles.size();i++)
+							for (int i=KernelAccessionIndex.size();i<CoreAlleles.size();i++)
+							{
+								//remove each item consecutively from the list of all populations in the core
+								AlleleList.clear();
+								TdTempList.clear();
+						
+								TdTempList = CoreAlleles; //swap to temporary vector
+								TdTempList.erase( TdTempList.begin() + i);
+								AlleleList = TdTempList;
+					
+								TempList2.clear();
+								TempList2 = AccessionsInCore;
+								TempList2.erase(TempList2.begin() + i);
+								AccessionsInSubCore = TempList2;
 
-								AccessionsInCore = bestcore; //define starting variable for next MSTRAT iteration
-				
-								//if there has been no improvement from the prior iteration, you have reached
-								// the plateau and should exit the repeat
-								if (best == StartingDiversity) 
-								{
-									plateau++;
-									if (plateau > 0) break;
-								}
-								//update starting value and repeat
-								else if (best > StartingDiversity) StartingDiversity = best;
-							
-								/*//standard break
-								if (best == StartingDiversity) break;
-								else if (best > StartingDiversity) StartingDiversity = best;
+								/*Data structure for SubCoreAlleles:
+								SubCore 1..r
+									Population 1..(r-1)
+										AlleleArray 1..NumLoci		
+					
+								--3. fuse alleles from the same locus into a single array, for all accessions, for the current subcore
+								--4. assemble a list of diversity (M) for each locus separately
+								--5. standardize the M values to the maximum possible number of alleles at that locus, and add them up to get final estimate of standardized allelic diversity in the core.  then divide by the number of loci to get a number that is comparable across data sets.
+								--5.5. simultaneous to the calculation, keep track of which subcore is best
 								*/
-								
-							} //while(true) endless loop
-						}
+					
+								MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
+								nnew = RandomActiveDiversity;
 		
-						//7. Calculate diversity at target loci
-						//assemble the target loci allelelist for the accessions in the best core
-						//vector<vector<vector<std::string> > >().swap(AlleleList); //clear AlleleList
-						AlleleList.clear();
-						AlleleList.resize( AccessionsInCore.size() );
-						for (int j=0;j<AccessionsInCore.size();j++)
-						{
-							b = AccessionsInCore[j];
-							//AlleleList.push_back(TargetAlleleByPopList[b]);
-							AlleleList[j] = TargetAlleleByPopList[b];
-						}
+								if (nnew >= best) // >= allows sideways movement during hill climbing
+								{
+									best = nnew;
+
+									BestSubCore.clear();
+									BestSubCore = AccessionsInSubCore;
+									BestSubCoreAlleles.clear();
+									BestSubCoreAlleles = AlleleList;
+								}
+							}  //for loop cycles thru all subcores
+
+							//reverse sort BestSubCore to support easy assembly of pared TempList below
+							BestSubCoreRevSorted = BestSubCore;
+							std::sort(BestSubCoreRevSorted.begin(), BestSubCoreRevSorted.end(), std::greater<int>());
+			
+							/*
+							6. take the subcore with greatest diversity and consecutively add each 
+							possible additional accession from the base collection.  find the core of size r 
+							(not r-1 subcore) that has the greatest diversity.
+
+							suppress the IDs of those accessions found in the BestSubCore from the 
+							list of all accessions to get a list of remaining accessions.*/
+							TempList = AccessionNameList;
+							for (int k=0;k<BestSubCoreRevSorted.size();k++)
+							{
+								bsc = BestSubCoreRevSorted[k];
+								TempList.erase( TempList.begin() + bsc );
+							}
+					
+							//shuffle the list of remaining accessions, so addition order is not predictable
+							std::random_shuffle (TempList.begin(), TempList.end());
+						
+							//add each remaining accession consecutively, calculate diversity, test 
+							//whether it is better than the prior one
+							best = 0;
+							for (int k=0;k<TempList.size();k++)
+							{
+								bsc = TempList[k];
+					
+								//define the core
+								TempList2 = BestSubCore;
+								TempList2.resize( TempList2.size() + 1 );
+								//TempList2.push_back(i);
+								TempList2[TempList2.size()-1] = bsc; //add new accession to last vector element
+								AccessionsInCore = TempList2;
+					
+								//assemble the allelelist for the core
+								TdTempList = BestSubCoreAlleles;
+								TdTempList.resize( TdTempList.size() + 1 );
+								//TdTempList.push_back( ActiveAlleleByPopList[i] );
+								TdTempList[TdTempList.size()-1] = ActiveAlleleByPopList[bsc];
+								AlleleList = TdTempList;
+					
+								//calculate diversity
+								MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, nnew, TempAltOptimizedActiveDiversity); 
+				
+								//test whether current diversity is higher than the best diversity found so far
+								if (nnew >= best) // >= allows sideways movement during hill climbing
+								{
+									best = nnew;
+									bestcore = AccessionsInCore;
+									//save the alternative diversity value for the best core
+									AltOptimizedActiveDiversity = TempAltOptimizedActiveDiversity;
+								}
+							}
+
+							AccessionsInCore = bestcore; //define starting variable for next MSTRAT iteration
+				
+							//if there has been no improvement from the prior iteration, you have reached
+							// the plateau and should exit the repeat
+							if (best == StartingDiversity) 
+							{
+								plateau++;
+								if (plateau > 0) break;
+							}
+							//update starting value and repeat
+							else if (best > StartingDiversity) StartingDiversity = best;
+						
+						} //while(true) endless loop
+					}
+		
+					//7. Calculate diversity at target loci
+					//assemble the target loci allelelist for the accessions in the best core
+					//vector<vector<vector<std::string> > >().swap(AlleleList); //clear AlleleList
+					AlleleList.clear();
+					AlleleList.resize( AccessionsInCore.size() );
+					for (int j=0;j<AccessionsInCore.size();j++)
+					{
+						b = AccessionsInCore[j];
+						//AlleleList.push_back(TargetAlleleByPopList[b]);
+						AlleleList[j] = TargetAlleleByPopList[b];
+					}
 			
 			
-						//calculate diversity at target loci based upon the optimized core selection
-						MyCalculateDiversity(AlleleList, TargetMaxAllelesList, Standardize, OptimizedTargetDiversity, AltOptimizedTargetDiversity);
+					//calculate diversity at target loci based upon the optimized core selection
+					MyCalculateDiversity(AlleleList, TargetMaxAllelesList, Standardize, OptimizedTargetDiversity, AltOptimizedTargetDiversity);
 
 			
-						//8. Assemble stats for optimized core and add to output vectors
-						//create a list of accession names from the list of accession ID's in AccessionsInCore
-						sort( AccessionsInCore.begin(), AccessionsInCore.end() );
+					//8. Assemble stats for optimized core and add to output vectors
+					//create a list of accession names from the list of accession ID's in AccessionsInCore
+					sort( AccessionsInCore.begin(), AccessionsInCore.end() );
 					
-						TempListStr.clear();
-						TempListStr.resize(r);
-						for (int i=0;i<AccessionsInCore.size();i++)
-						{
-							b = AccessionsInCore[i];
-							TempListStr[i] = FullAccessionNameList[b];
-						}
+					TempListStr.clear();
+					TempListStr.resize(r);
+					for (int i=0;i<AccessionsInCore.size();i++)
+					{
+						b = AccessionsInCore[i];
+						TempListStr[i] = FullAccessionNameList[b];
+					}
 
-						//load the variables onto the results vectors
-						//numerical results
-						row = ((r - MinCoreSize)*NumReplicates) + nr - ( (NumReplicates*(SamplingFreq-1))*( (r-MinCoreSize)/SamplingFreq ) );
-						// (r - MinCoreSize)*NumReplicates) + nr specifies row number if SamplingFreq=1
-						// (NumReplicates*(SamplingFreq-1)) specifies a step value to correct when SamplingFreq>1
-						// ( (r-MinCoreSize)/SamplingFreq ) specifies the replicate on core size, accounting for SamplingFreq
-						// see file Calculation of row value.xlsx for development of the 'row' index
-						Results[row][0] = r;
-						Results[row][1] = StartingRandomActiveDiversity;//RandomActiveDiversity;
-						Results[row][2] = best; //equivalent to OptimizedActiveDiversity
-						Results[row][3] = RandomTargetDiversity;
-						Results[row][4] = OptimizedTargetDiversity;
-						Results[row][5] = StartingAltRandomActiveDiversity;//AltRandomActiveDiversity;
-						Results[row][6] = AltOptimizedActiveDiversity;
-						Results[row][7] = AltRandomTargetDiversity;
-						Results[row][8] = AltOptimizedTargetDiversity;
+					//load the variables onto the results vectors
+					//numerical results
+					row = ((r - MinCoreSize)*NumReplicates) + nr - ( (NumReplicates*(SamplingFreq-1))*( (r-MinCoreSize)/SamplingFreq ) );
+					// (r - MinCoreSize)*NumReplicates) + nr specifies row number if SamplingFreq=1
+					// (NumReplicates*(SamplingFreq-1)) specifies a step value to correct when SamplingFreq>1
+					// ( (r-MinCoreSize)/SamplingFreq ) specifies the replicate on core size, accounting for SamplingFreq
+					// see file Calculation of row value.xlsx for development of the 'row' index
+					Results[row][0] = r;
+					Results[row][1] = StartingRandomActiveDiversity;//RandomActiveDiversity;
+					Results[row][2] = best; //equivalent to OptimizedActiveDiversity
+					Results[row][3] = RandomTargetDiversity;
+					Results[row][4] = OptimizedTargetDiversity;
+					Results[row][5] = StartingAltRandomActiveDiversity;//AltRandomActiveDiversity;
+					Results[row][6] = AltOptimizedActiveDiversity;
+					Results[row][7] = AltRandomTargetDiversity;
+					Results[row][8] = AltOptimizedTargetDiversity;
 			
-						//core set members
-						Members[row] = TempListStr; 
+					//core set members
+					Members[row] = TempListStr; 
 			
-						//write the results onto the recovery files
-						WriteRecoveryFile(RecoveryFilePath, r, StartingRandomActiveDiversity, best, RandomTargetDiversity, OptimizedTargetDiversity, StartingAltRandomActiveDiversity, AltOptimizedActiveDiversity, AltRandomTargetDiversity, AltOptimizedTargetDiversity, TempListStr);
+					//write the results onto the recovery files
+					WriteRecoveryFile(RecoveryFilePath, r, StartingRandomActiveDiversity, best, RandomTargetDiversity, OptimizedTargetDiversity, StartingAltRandomActiveDiversity, AltOptimizedActiveDiversity, AltRandomTargetDiversity, AltOptimizedTargetDiversity, TempListStr);
 					
-						//display progress
-						progindex = progindex + 1;
-						percent = 100*(progindex/V1);
-						printProgBar(percent); 
-						//cout << progindex << "\n";
-					
-					//} //end NumReplicates
-				//} //end   for (r=MinCoreSize;r<MaxCoreSize+1;r=r+SamplingFreq)
-				} //end   for (int rnr = 0; rnr<rsteps*NumReplicates;++rnr)
-					
+					//display progress
+					progindex = progindex + 1;
+					percent = 100*(progindex/V1);
+					printProgBar(percent); 
+				} //end #pragma omp for loop
 		} //end #pragma omp parallel	
 	
-
 		//set up file stream for output file
 		ofstream output; 
 		output.open(OutFilePath);
@@ -1912,8 +1549,5 @@ int main( int argc, char* argv[] )
 		dif = difftime (endm,startm);
 		cout << "\nM+ search complete.  Elapsed time = "<< dif << " seconds.\n\n";
 	}
-
-
-
-
+	return 0;
 }
