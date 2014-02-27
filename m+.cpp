@@ -721,13 +721,23 @@ int main( int argc, char* argv[] )
 	char* DatFilePath = argv[2];
 	
 	//initialize optional command line arguments
-	unsigned int MinCoreSize = NULL;
+	/*unsigned int MinCoreSize = NULL;
 	unsigned int MaxCoreSize = NULL;
 	int SamplingFreq = NULL;
 	int NumReplicates = NULL;
 	char* OutFilePath = NULL;
 	char* KerFilePath = NULL;
 	char* IdealFilePath = NULL;
+	*/
+	unsigned int MinCoreSize;
+	unsigned int MaxCoreSize;
+	int SamplingFreq;
+	int NumReplicates;
+	char* OutFilePath;
+	char* KerFilePath;
+	char* IdealFilePath;
+
+	
 	
 	//declare variables
 	unsigned int i, j, l;
