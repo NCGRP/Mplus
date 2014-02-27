@@ -3,7 +3,6 @@
 //reconstruct the path from the node back to the start
 vector<std::string> MyReconstructPath(Node e, vector<Node> AllNodes)
 {
-	int i;
 	std::string Parent;
 	std::string AccName;
 	std::string f;
@@ -14,7 +13,7 @@ vector<std::string> MyReconstructPath(Node e, vector<Node> AllNodes)
 	while (Parent != "start")
 	{
 		//get the node associated with the parent of current node in path
-		for (i=0;i<AllNodes.size();++i)
+		for (unsigned int i=0;i<AllNodes.size();++i)
 		{
 			f = AllNodes[i].GetAccName();
 			if (f == Parent)
@@ -33,7 +32,6 @@ vector<std::string> MyReconstructPath(Node e, vector<Node> AllNodes)
 //reconstruct the path from the node back to the start, thread safe
 vector<std::string> MyReconstructPathII(Node e, vector<Node> AllNodes)
 {
-	int i;
 	std::string Parent;
 	std::string AccName;
 	std::string f;
@@ -46,7 +44,7 @@ vector<std::string> MyReconstructPathII(Node e, vector<Node> AllNodes)
 	while (Parent != "start")
 	{
 		//get the node associated with the parent of current node in path
-		for (i=0;i<AllNodes.size();++i)
+		for (unsigned int i=0;i<AllNodes.size();++i)
 		{
 			f = AllNodes[i].GetAccName();
 			if (f == Parent)
@@ -70,8 +68,8 @@ vector<std::string> MyReconstructPathII(Node e, vector<Node> AllNodes)
 //calculate distances, add to node
 void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<int> RefPloidyList, vector<Alfreq> AlleleFrequencies)
 {
-	int i, j, k, l;
-	double f0, g, h0, a0, a1, a2;
+	unsigned int i, j, k, l;
+	double g, h0, a0, a1, a2;
 	double temp;
 	
 	//g = number of accessions in current path, equals size of reconstructed path
@@ -310,7 +308,8 @@ void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<
 //counts the number of alleles at each locus, eliminating redundancies by using set
 vector<int> MyCountAllelesAtEachLocus(vector<vector<std::string> > a)
 {
-	int i, b, j;
+	int b;
+	unsigned int i, j;
 	vector<int> AlleleCounts;
 	set<std::string> AlleleSet; //non-redundant list of alleles at a locus
 	vector<std::string> t;
@@ -334,7 +333,7 @@ vector<int> MyCountAllelesAtEachLocus(vector<vector<std::string> > a)
 
 vector<int> MyGetUpdatedAlleleCounts(vector<std::string> ParentPath, vector<Node> AllNodes, vector<int> RefPloidyList)
 {
-	int i, j, k;
+	unsigned int i, j, k;
 	std::string s, t;
 	
 	vector<vector<std::string> > pc(RefPloidyList.size()); //will hold only unique alleles accumulated at each locus, size to number of loci
@@ -373,7 +372,7 @@ void printOPENlist(SortedCostNodeList OPENlist)
 	//print out OPENlist
 	vector<Node> ess = OPENlist.Gets();
 	cout << "OPENlist\nAccName	Parent	f0	g	h0	a0	a1	a2\n";
-	for (int i=0;i<ess.size();++i)
+	for (unsigned int i=0;i<ess.size();++i)
 	{
 		cout 	<< ess[i].GetAccName() << "\t"
 				<< ess[i].GetParent() << "\t" 
@@ -391,7 +390,7 @@ void printCLOSEDlist(SortedCostNodeList CLOSEDlist)
 	//print out CLOSEDlist
 	vector<Node> ess = CLOSEDlist.Gets();
 	cout << "\nCLOSEDlist\nAccName	Parent	f0	g	h0	a0	a1	a2\n";
-	for (int i=0;i<ess.size();++i)
+	for (unsigned int i=0;i<ess.size();++i)
 	{
 		cout 	<< ess[i].GetAccName() << "\t"
 				<< ess[i].GetParent() << "\t" 
@@ -409,7 +408,7 @@ void printAllNodes(vector<Node> AllNodes)
 	//print out AllNodes
 	vector<Node> ess = AllNodes;
 	cout << "\nAllNodes\nAccName	Parent	f0	g	h0	a0	a1	a2\n";
-	for (int i=0;i<ess.size();++i)
+	for (unsigned int i=0;i<ess.size();++i)
 	{
 		cout 	<< ess[i].GetAccName() << "\t"
 				<< ess[i].GetParent() << "\t" 
@@ -512,7 +511,7 @@ vector<Node> SortedCostNodeList::Gets() {return s;}
 int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlleleByPopList, vector<int> ActiveMaxAllelesList, vector<std::string> UniqLociNamesList, vector<int> ReferenceOrTargetKey, vector<std::string> FullAccessionNameList, vector<int> PloidyList, vector<int> PopSizes, vector<Alfreq> AlleleFrequencies, int parallelism_enabled)
 {
 	//SET UP
-	int i;
+	unsigned int i;
 	
 	//get total number of alleles
 	int TotAlleles = 0;
@@ -724,9 +723,10 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 			string nn;
 			vector<Node>::iterator itn;
 			int l;
+			int vsize = v.size();  //unsigned into coerced to signed int so compiler doesn't squawk for using unsigned int for #pragma omp for iterator
 
 			#pragma omp for
-			for (i=0;i<v.size();++i)
+			for (int i=0;i<vsize;++i)
 			{
 
 				//find the node in AllNodes
