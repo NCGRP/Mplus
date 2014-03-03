@@ -138,5 +138,34 @@ void printOPENList(SortedCostNodeList OPENlist);
 void printCLOSEDList(SortedCostNodeList CLOSEDlist);
 void printAllNodes(std::vector<Node> AllNodes);
 
-/***************FUNCTIONS SHARED BETWEEN M+.cpp and aStar.cpp*****************/
-int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAllelesByPopList, std::vector<int> ActiveMaxAllelesList, std::vector<std::string> UniqLociNamesList, std::vector<int> ReferenceOrTargetKey, vector<std::string> FullAccessionNameList, vector<int> PloidyList, vector<int> PopSizes, vector<Alfreq> AlleleFrequencies, int parallelism_enabled);
+/***************FUNCTIONS SHARED BETWEEN FILES*****************/
+int aStar 
+	(
+		char* IdealFilePath, 
+		vector<vector<vector<std::string> > > ActiveAllelesByPopList, 
+		std::vector<int> ActiveMaxAllelesList, 
+		std::vector<std::string> UniqLociNamesList, 
+		std::vector<int> ReferenceOrTargetKey, 
+		vector<std::string> FullAccessionNameList, 
+		vector<int> PloidyList, 
+		vector<int> PopSizes, 
+		vector<Alfreq> AlleleFrequencies, 
+		int parallelism_enabled
+	);
+void mp
+	(
+		int MinCoreSize,
+		int MaxCoreSize,
+		int SamplingFreq,
+		int NumReplicates,
+		char* OutFilePath,
+		std::string Kernel,
+		vector<int> KernelAccessionIndex,
+		vector<int> AccessionNameList,
+		vector<vector<vector<std::string> > > ActiveAlleleByPopList,
+		vector<vector<vector<std::string> > > TargetAlleleByPopList,
+		vector<int> ActiveMaxAllelesList,
+		vector<int> TargetMaxAllelesList,
+		vector<std::string> FullAccessionNameList,
+		int parallelism_enabled
+	);	

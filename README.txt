@@ -23,4 +23,6 @@ Options:
 
 Notes:  All input files must have Unix line breaks.
 
-example: ./m+ ./beet.var ./beet.dat -m 3 28 2 3 ./beetout.txt -k beet.ker -a beetideal.txt
+Examples: ./m+ ./beet.var ./beet.dat -m 3 28 2 3 ./beetout.txt -k beet.ker -a beetideal.txt
+         ./m+ ./AllPOC.var ./AllPOC.dat -m 2 56 1 5 AllPOCout.txt -a AllPOCidealout.txt
+         ./m+ ./orientalis.var ./orientalisIND.dat -m 2 50 1 1 orINDout.txt -a orINDidealout.txt

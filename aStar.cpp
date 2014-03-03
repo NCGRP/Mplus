@@ -723,7 +723,7 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 			string nn;
 			vector<Node>::iterator itn;
 			int l;
-			int vsize = v.size();  //unsigned into coerced to signed int so compiler doesn't squawk for using unsigned int for #pragma omp for iterator
+			int vsize = v.size();  //unsigned int coerced to signed int so compiler doesn't squawk for using unsigned int for #pragma omp for iterator
 
 			#pragma omp for
 			for (int i=0;i<vsize;++i)
