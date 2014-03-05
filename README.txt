@@ -19,7 +19,7 @@ Options:
         mincoresize.  Option must be used with -m.
 -a idealcorefile = compute the minimum set of accessions necessary to retain all variation,
 		i.e. the "ideal" or "best" core, using the A* search algorithm, write output to 
-		bestcorefile.
+		idealcorefile.
 
 Notes:  All input files must have Unix line breaks.
 
