@@ -138,7 +138,8 @@ void mp(
 	vector<int> ActiveMaxAllelesList,
 	vector<int> TargetMaxAllelesList,
 	vector<std::string> FullAccessionNameList,
-	int parallelism_enabled
+	int parallelism_enabled,
+	int ncpu
 	)	
 {
 	
@@ -162,7 +163,7 @@ void mp(
 	vector<vector<string> > Members(V1); //will contain core set members
 	
 
-	#pragma omp parallel if(parallelism_enabled) 
+	#pragma omp parallel if(parallelism_enabled) num_threads(ncpu)
 	{		
 		unsigned int r; //r = core size, 
 		int nr, RandAcc, b, row, bsc, plateau; //nr = controller to repeat NumReplicates times

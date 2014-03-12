@@ -726,9 +726,7 @@ int main( int argc, char* argv[] )
 	
 
 	//DETERMINE MACHINE CONFIGURATIION
-	int numCPU = sysconf( _SC_NPROCESSORS_ONLN );
-	cout << "\nnumCPU=" << numCPU << "\n";
-	getchar();
+	int ncpu = sysconf( _SC_NPROCESSORS_ONLN );
 	
 	//PROCESS INPUT DATA
 	
@@ -992,7 +990,8 @@ int main( int argc, char* argv[] )
 			PloidyList, 
 			PopSizes, 
 			AlleleFrequencies, 
-			parallelism_enabled
+			parallelism_enabled,
+			ncpu
 		);
 		
 		//stop the clock
@@ -1029,7 +1028,8 @@ int main( int argc, char* argv[] )
 		ActiveMaxAllelesList,
 		TargetMaxAllelesList,
 		FullAccessionNameList,
-		parallelism_enabled
+		parallelism_enabled,
+		ncpu
 		);
 		
 		//stop the clock

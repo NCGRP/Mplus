@@ -508,7 +508,7 @@ vector<Node> SortedCostNodeList::Gets() {return s;}
 
 
 //A*
-int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlleleByPopList, vector<int> ActiveMaxAllelesList, vector<std::string> UniqLociNamesList, vector<int> ReferenceOrTargetKey, vector<std::string> FullAccessionNameList, vector<int> PloidyList, vector<int> PopSizes, vector<Alfreq> AlleleFrequencies, int parallelism_enabled)
+int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlleleByPopList, vector<int> ActiveMaxAllelesList, vector<std::string> UniqLociNamesList, vector<int> ReferenceOrTargetKey, vector<std::string> FullAccessionNameList, vector<int> PloidyList, vector<int> PopSizes, vector<Alfreq> AlleleFrequencies, int parallelism_enabled, int ncpu)
 {
 	//SET UP
 	unsigned int i;

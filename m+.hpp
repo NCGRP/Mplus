@@ -150,7 +150,8 @@ int aStar
 		vector<int> PloidyList, 
 		vector<int> PopSizes, 
 		vector<Alfreq> AlleleFrequencies, 
-		int parallelism_enabled
+		int parallelism_enabled,
+		int ncpu
 	);
 void mp
 	(
@@ -167,5 +168,6 @@ void mp
 		vector<int> ActiveMaxAllelesList,
 		vector<int> TargetMaxAllelesList,
 		vector<std::string> FullAccessionNameList,
-		int parallelism_enabled
+		int parallelism_enabled,
+		int ncpu
 	);	
