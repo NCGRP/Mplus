@@ -678,7 +678,7 @@ int main( int argc, char* argv[] )
 	}
 	
 	//print out input variables
-	cout << "Input variables:\n  VarFilePath = " << VarFilePath << "\n";
+	cout << "\nInput variables:\n  VarFilePath = " << VarFilePath << "\n";
 	cout << "  DatFilePath = " << DatFilePath << "\n";
 	if (DoM == "yes")
 	{
@@ -725,6 +725,11 @@ int main( int argc, char* argv[] )
 	}
 	
 
+	//DETERMINE MACHINE CONFIGURATIION
+	int numCPU = sysconf( _SC_NPROCESSORS_ONLN );
+	cout << "\nnumCPU=" << numCPU << "\n";
+	getchar();
+	
 	//PROCESS INPUT DATA
 	
 	//start the clock
