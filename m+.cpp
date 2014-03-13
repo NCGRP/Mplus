@@ -444,7 +444,8 @@ bool fileExists(const char *fileName)
 
 vector<std::string> MyRemoveTargetAlleles(vector<std::string> AllAlleles, vector<int> AllColumnIDList, vector<int> TargetColumnIDList)
 {
-	unsigned int checker, j;
+	unsigned int j;
+	int checker;
 	unsigned int i=0;
 	vector<std::string> AllRefAlleles;
 	while (i<AllAlleles.size())

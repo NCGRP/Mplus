@@ -218,7 +218,7 @@ void mp(
 		//handled by a distinct thread.  this involves figuring out the total
 		//number of reps*coresizes taking into account the SamplingFreq
 
-		int rsteps = 1 + floor( (MaxCoreSize - MinCoreSize) / SamplingFreq ); //number of steps from MinCoreSize to MaxCoreSize
+		int rsteps = 1 + (int)floor( (MaxCoreSize - MinCoreSize) / SamplingFreq ); //number of steps from MinCoreSize to MaxCoreSize
 
 		#pragma omp for
 			for (int rnr = 0; rnr<rsteps*NumReplicates;++rnr)
@@ -506,7 +506,7 @@ void mp(
 				
 				//display progress
 				progindex = progindex + 1;
-				percent = 100*(progindex/(double)V1);
+				percent = (int)100*(progindex/(double)V1);
 				printProgBar(percent); 
 			} //end #pragma omp for loop
 	} //end #pragma omp parallel	

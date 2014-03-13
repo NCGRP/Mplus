@@ -736,7 +736,7 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 
 				//set AlleleCounts to unique alleles at all loci in ParentPath of node_current + this successor
 				ParentPath.clear();
-				ParentPath.resize(node_current.Getf0() + 1);
+				ParentPath.resize((int)node_current.Getf0() + 1);
 				ParentPath = MyReconstructPathII(AllNodes[l], AllNodes);
 
 				/*
