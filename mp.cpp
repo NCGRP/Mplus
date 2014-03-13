@@ -552,7 +552,7 @@ void mp(
 
 	//delete all recovery files
 	cout << "\n\nDeleting recovery files...\n";
-	#pragma omp parallel if(parallelism_enabled) 
+	#pragma omp parallel if(parallelism_enabled) num_threads(ncpu) 
 	{		
 		stringstream ss;
 		ss << OutFilePath << ".t" << omp_get_thread_num() << ".tmp"; 
