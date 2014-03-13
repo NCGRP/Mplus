@@ -36,7 +36,7 @@ vector<std::string> MyReconstructPathII(Node e, vector<Node> AllNodes)
 	std::string AccName;
 	std::string f;
 	vector<std::string> path; //path is going to contain the calculated path in reverse order
-	path.resize(e.Getf0() + 1);
+	path.resize((int)e.Getf0() + 1);
 	
 	Parent = e.GetParent();
 	

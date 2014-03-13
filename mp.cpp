@@ -506,7 +506,7 @@ void mp(
 				
 				//display progress
 				progindex = progindex + 1;
-				percent = (int)100*(progindex/(double)V1);
+				percent = 100*(progindex/(double)V1);
 				printProgBar(percent); 
 			} //end #pragma omp for loop
 	} //end #pragma omp parallel	
