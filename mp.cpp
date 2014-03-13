@@ -551,12 +551,20 @@ void mp(
 	output.close();
 
 	//delete all recovery files
+	cout << "\n\nDeleting recovery files...\n";
 	#pragma omp parallel if(parallelism_enabled) 
 	{		
 		stringstream ss;
 		ss << OutFilePath << ".t" << omp_get_thread_num() << ".tmp"; 
 		string rfp = ss.str();
 		const char* RecoveryFilePath = rfp.c_str();
-		remove(RecoveryFilePath);
+		
+		if (remove(RecoveryFilePath))
+    		cout << "Failed to delete '" << RecoveryFilePath << "': " << strerror(errno) << '\n';
+		else
+    		cout << RecoveryFilePath << " successfully deleted.\n";
+		
+		
+		//remove(RecoveryFilePath);
 	}
 }
