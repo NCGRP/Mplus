@@ -560,11 +560,7 @@ void mp(
 		const char* RecoveryFilePath = rfp.c_str();
 		
 		if (remove(RecoveryFilePath))
-    		cout << "Failed to delete '" << RecoveryFilePath << "': " << strerror(errno) << '\n';
-		else
-    		cout << RecoveryFilePath << " successfully deleted.\n";
-		
-		
-		//remove(RecoveryFilePath);
+    		cout << "Failed to delete " << RecoveryFilePath << ": " << strerror(errno) << "\n";
+		//else cout << RecoveryFilePath << " successfully deleted.\n";
 	}
 }
