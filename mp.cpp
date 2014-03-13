@@ -158,7 +158,7 @@ void mp(
 	}
 	
 	//set up vectors to fill with results
-	double V1 = (double)l; //(MaxCoreSize - MinCoreSize + 1)*NumReplicates; //number of rows in output vectors
+	unsigned long long V1 = l; //(MaxCoreSize - MinCoreSize + 1)*NumReplicates; //number of rows in output vectors
 	vector<vector<double> > Results(V1, vector<double>(9)); //will contain numerical results
 	vector<vector<string> > Members(V1); //will contain core set members
 	
@@ -506,7 +506,7 @@ void mp(
 				
 				//display progress
 				progindex = progindex + 1;
-				percent = 100*(progindex/V1);
+				percent = 100*(progindex/(double)V1);
 				printProgBar(percent); 
 			} //end #pragma omp for loop
 	} //end #pragma omp parallel	
@@ -519,7 +519,7 @@ void mp(
 	output << "core size	random reference diversity	optimized reference diversity	random target diversity	optimized target diversity	alt random reference diversity	alt optimized reference diversity	alt random target diversity	alt optimized target diversity	core members" << "\n";
 		
 	//write out results row by row
-	for (int i=0;i<V1;i++)
+	for (unsigned int i=0;i<V1;i++)
 	{
 		//write variables
 		output 	<< Results[i][0] 

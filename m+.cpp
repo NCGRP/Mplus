@@ -972,7 +972,7 @@ int main( int argc, char* argv[] )
 	{
 		int parallelism_enabled = 1; //0=no, not 0 = yes
 		if (parallelism_enabled == 0) cout << "\nBeginning serial A* search...\n\n";
-		else cout << "\nBeginning parallel A* search...\n\n";
+		else cout << "\nBeginning parallel A* search (" << ncpu << " threads)...\n\n";
 				
 		//start the clock
 		time_t start1,end1;
@@ -1006,7 +1006,7 @@ int main( int argc, char* argv[] )
 		//compile as parallel or not?
 		int parallelism_enabled = 1; //0=no, not 0 = yes
 		if (parallelism_enabled == 0) cout << "\nBeginning serial M+ search...\n\n";
-		else cout << "\nBeginning parallel M+ search...\n\n";
+		else cout << "\nBeginning parallel M+ search (" << ncpu << " threads)...\n\n";
 
 		//start the clock
 		time_t startm,endm;
