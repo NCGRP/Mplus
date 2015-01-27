@@ -16,7 +16,7 @@ Options:
 		outputfile = path to output
 -k kernelfile = use an MSTRAT .ker file to specify mandatory members of the 
         core.  The number of mandatory accessions must therefore be less than or equal to 
-        mincoresize.  Option must be used with -m.
+        mincoresize.  Option can only be used with -m.
 -a idealcorefile = compute the minimum set of accessions necessary to retain all variation,
 		i.e. the "ideal" or "best" core, using the A* search algorithm, write output to 
 		idealcorefile.
