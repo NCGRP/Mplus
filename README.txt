@@ -1,5 +1,5 @@
 To compile:  use "make"
-Usage: m+ varfile datfile [-m mincoresize maxcoresize samplingfreq reps outputfile]
+Usage: m+1 varfile datfile [-m mincoresize maxcoresize samplingfreq reps outputfile]
 		[-k kernelfile] [-a idealcorefile]
 where, 
 varfile = path to MSTRAT .var file
@@ -23,7 +23,7 @@ Options:
 
 Notes:  All input files must have Unix line breaks.
 
-Examples: ./m+ ./beet.var ./beet.dat -m 3 28 2 3 ./beetout.txt -k beet.ker -a beetideal.txt
-         ./m+ ./AllPOC.var ./AllPOC.dat -m 2 56 1 5 AllPOCout.txt -a AllPOCidealout.txt
-         ./m+ ./orientalis.var ./orientalisIND.dat -m 2 50 1 1 orINDout.txt -a orINDidealout.txt
-         ./m+ ./WheatSNP.var ./WheatSNP.dat -m 20 21 1 20 ./WheatSNPout.txt
+Examples: ./m+1 ./beet.var ./beet.dat -m 3 28 2 3 ./beetout.txt -k beet.ker -a beetideal.txt
+         ./m+1 ./AllPOC.var ./AllPOC.dat -m 2 56 1 5 AllPOCout.txt -a AllPOCidealout.txt
+         ./m+1 ./orientalis.var ./orientalisIND.dat -m 2 50 1 1 orINDout.txt -a orINDidealout.txt
+         ./m+1 ./WheatSNP.var ./WheatSNP.dat -m 20 21 1 20 ./WheatSNPout.txt

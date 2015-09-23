@@ -1005,7 +1005,7 @@ int main( int argc, char* argv[] )
 	if (DoM == "yes")
 	{
 		//compile as parallel or not?
-		int parallelism_enabled = 1; //0=no, not 0 = yes
+		int parallelism_enabled = 0; //0=no, not 0 = yes
 		if (parallelism_enabled == 0) cout << "\nBeginning serial M+ search...\n\n";
 		else cout << "\nBeginning parallel M+ search (" << ncpu << " threads)...\n\n";
 

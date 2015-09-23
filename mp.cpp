@@ -143,6 +143,9 @@ void mp(
 	)	
 {
 	
+	//make recovery files (0) or not (1)
+	int MakeRecovery=0;
+	
 	//set up variables for monitoring progress
 	int percent; //percent of analysis completed
 	int progindex = 0;  //index to monitor progress, percent = 100*(progindex/l)
@@ -207,13 +210,16 @@ void mp(
 		ss << OutFilePath << ".t" << omp_get_thread_num() << ".tmp"; 
 		string rfp = ss.str();
 		const char* RecoveryFilePath = rfp.c_str();
-		ofstream RecoveryFile; 
-		RecoveryFile.open(RecoveryFilePath);
-		RecoveryFile.close(); //quick open close done to clear any existing file each time program is run
-		RecoveryFile.open(RecoveryFilePath, ios::out | ios::app); //open file in append mode
-		RecoveryFile << "core size	random reference diversity	optimized reference diversity	random target diversity	optimized target diversity	alt random reference diversity	alt optimized reference diversity	alt random target diversity	alt optimized target diversity	core members" << "\n";
-		RecoveryFile.close();
-
+		if ( MakeRecovery == 0 ) // only write the recovery file to disk when option = 0
+		{
+			ofstream RecoveryFile; 
+			RecoveryFile.open(RecoveryFilePath);
+			RecoveryFile.close(); //quick open close done to clear any existing file each time program is run
+			RecoveryFile.open(RecoveryFilePath, ios::out | ios::app); //open file in append mode
+			RecoveryFile << "core size	random reference diversity	optimized reference diversity	random target diversity	optimized target diversity	alt random reference diversity	alt optimized reference diversity	alt random target diversity	alt optimized target diversity	core members" << "\n";
+			RecoveryFile.close();
+		}
+		
 		//do parallelization so that each rep by core size combo can be
 		//handled by a distinct thread.  this involves figuring out the total
 		//number of reps*coresizes taking into account the SamplingFreq
@@ -502,7 +508,10 @@ void mp(
 				Members[row] = TempListStr; 
 		
 				//write the results onto the recovery files
-				WriteRecoveryFile(RecoveryFilePath, r, StartingRandomActiveDiversity, best, RandomTargetDiversity, OptimizedTargetDiversity, StartingAltRandomActiveDiversity, AltOptimizedActiveDiversity, AltRandomTargetDiversity, AltOptimizedTargetDiversity, TempListStr);
+				if ( MakeRecovery == 0) 
+				{
+					WriteRecoveryFile(RecoveryFilePath, r, StartingRandomActiveDiversity, best, RandomTargetDiversity, OptimizedTargetDiversity, StartingAltRandomActiveDiversity, AltOptimizedActiveDiversity, AltRandomTargetDiversity, AltOptimizedTargetDiversity, TempListStr);
+				}
 				
 				//display progress
 				progindex = progindex + 1;
@@ -551,16 +560,19 @@ void mp(
 	output.close();
 
 	//delete all recovery files
-	cout << "\n\nDeleting recovery files...\n";
-	#pragma omp parallel if(parallelism_enabled) num_threads(ncpu) 
-	{		
-		stringstream ss;
-		ss << OutFilePath << ".t" << omp_get_thread_num() << ".tmp"; 
-		string rfp = ss.str();
-		const char* RecoveryFilePath = rfp.c_str();
+	if ( MakeRecovery == 0 )
+	{
+		cout << "\n\nDeleting recovery files...\n";
+		#pragma omp parallel if(parallelism_enabled) num_threads(ncpu) 
+		{		
+			stringstream ss;
+			ss << OutFilePath << ".t" << omp_get_thread_num() << ".tmp"; 
+			string rfp = ss.str();
+			const char* RecoveryFilePath = rfp.c_str();
 		
-		if (remove(RecoveryFilePath))
-    		cout << "Failed to delete " << RecoveryFilePath << ": " << strerror(errno) << "\n";
-		//else cout << RecoveryFilePath << " successfully deleted.\n";
+			if (remove(RecoveryFilePath))
+				cout << "Failed to delete " << RecoveryFilePath << ": " << strerror(errno) << "\n";
+			//else cout << RecoveryFilePath << " successfully deleted.\n";
+		}
 	}
 }

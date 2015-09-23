@@ -2,7 +2,7 @@ CXX = g++
 FLAGS = -ggdb -Wall
 
 all: m+.o mp.o aStar.o 
-	${CXX} ${FLAGS} -o m+ m+.o mp.o aStar.o -fopenmp
+	${CXX} ${FLAGS} -o m+1 m+.o mp.o aStar.o -fopenmp
 
 m+.o: m+.cpp m+.hpp
 	${CXX} ${FLAGS} -c m+.cpp
