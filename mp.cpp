@@ -144,7 +144,7 @@ void mp(
 {
 	
 	//make recovery files (0) or not (1)
-	int MakeRecovery=0;
+	int MakeRecovery=1;
 	
 	//set up variables for monitoring progress
 	int percent; //percent of analysis completed
@@ -206,12 +206,13 @@ void mp(
 		srand ( tt ^ omp_get_thread_num() ); //initialize
 	
 		//set up a recovery file for each thread that saves progress as program runs
-		stringstream ss;
-		ss << OutFilePath << ".t" << omp_get_thread_num() << ".tmp"; 
-		string rfp = ss.str();
-		const char* RecoveryFilePath = rfp.c_str();
+		const char* RecoveryFilePath;
 		if ( MakeRecovery == 0 ) // only write the recovery file to disk when option = 0
 		{
+			stringstream ss;
+			ss << OutFilePath << ".t" << omp_get_thread_num() << ".tmp"; 
+			string rfp = ss.str();
+			RecoveryFilePath = rfp.c_str();
 			ofstream RecoveryFile; 
 			RecoveryFile.open(RecoveryFilePath);
 			RecoveryFile.close(); //quick open close done to clear any existing file each time program is run
