@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <sstream>
 #include <time.h>
+#include <unistd.h>
 #include <vector>
 using namespace std;
 
