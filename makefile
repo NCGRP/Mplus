@@ -1,5 +1,5 @@
 CXX = g++
-FLAGS = -ggdb -Wall
+FLAGS = -O2 -Wall
 
 all: m+.o mp.o aStar.o 
 	${CXX} ${FLAGS} -o m+1 m+.o mp.o aStar.o -fopenmp
