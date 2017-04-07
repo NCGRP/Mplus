@@ -203,7 +203,15 @@ void mp(
 		//seed the random number generator for each thread
 		int tt;
 		tt = (time(NULL));
-		srand ( tt ^ omp_get_thread_num() ); //initialize
+		if (parallelism_enabled == 0) 
+		{
+			srand ( tt ); //initialize seed based on clock when not parallel
+		}
+		else
+		{
+			srand ( tt ^ omp_get_thread_num() ); //seed random number generator differently for each thread
+		}
+		
 	
 		//set up a recovery file for each thread that saves progress as program runs
 		const char* RecoveryFilePath;
