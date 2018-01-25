@@ -652,21 +652,31 @@ int main( int argc, char* argv[] )
         	IdealFilePath = argv[i+1];
 		}
 	}
-	
+    	
 	//test whether all files specified on the command line exist
 	if (fileExists(VarFilePath) == 0) 
 	{
 		bf = "VarFilePath = ";
-		bf += VarFilePath;
-		BadFiles.push_back(bf);
+        if(VarFilePath != NULL){
+		    bf += VarFilePath;
+		    BadFiles.push_back(bf);
+        }
+        else{
+            BadFiles.push_back("NO VarFile");
+        }
 	}
+ 
 	if (fileExists(DatFilePath) == 0) 
 	{
 		bf = "DatFilePath = ";
-		bf += DatFilePath;
-		BadFiles.push_back(bf);
+        if( DatFilePath != NULL){
+		    bf += DatFilePath;
+		    BadFiles.push_back(bf);
+        }
+        else{
+            BadFiles.push_back("NO DatFile");
+        }
 	}
-	
 	if (BadFiles.size() > 0)
 	{
 		cout << "\nThe following variables appear to contain misspecified paths:\n";
@@ -677,7 +687,6 @@ int main( int argc, char* argv[] )
 		cout << "\nPlease check the command line.  Quitting...\n\n";
 		exit (EXIT_FAILURE);
 	}
-	
 	//print out input variables
 	cout << "\nInput variables:\n  VarFilePath = " << VarFilePath << "\n";
 	cout << "  DatFilePath = " << DatFilePath << "\n";
