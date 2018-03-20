@@ -36,7 +36,7 @@ vector<std::string> MyReconstructPathII(Node e, vector<Node> AllNodes)
 	std::string AccName;
 	std::string f;
 	vector<std::string> path; //path is going to contain the calculated path in reverse order
-	path.resize((int)e.Getf0() + 1);
+	path.resize(e.Getf0() + 1);
 	
 	Parent = e.GetParent();
 	
@@ -198,8 +198,8 @@ void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<
 	
 	//1.
 	//traverse the ParentPath to pick up all sets of alleles
-	vector<vector<std::string> > pc(RefPloidyList.size()); //will hold only unique alleles accumulated at each locus, size to number of loci
-	vector<vector<std::string> > u; //holds set of alleles, temporarily
+	vector<vector<int> > pc(RefPloidyList.size()); //will hold only unique alleles accumulated at each locus, size to number of loci
+	vector<vector<int> > u; //holds set of alleles, temporarily
 	for (i=0;i<ParentPath.size();++i)
 	{
 		s = ParentPath[i];
@@ -221,32 +221,33 @@ void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<
 	}
 		
 	//sort pc and remove duplicate elements
+	vector<int> vv; //will contain lists of integerized alleles
 	for (i=0;i<pc.size();++i)
 	{
-		v = pc[i];
-		std::sort(v.begin(), v.end());
-		v.erase(std::unique(v.begin(), v.end()), v.end());	
-		pc[i] = v;
+		vv = pc[i];
+		std::sort(vv.begin(), vv.end());
+		vv.erase(std::unique(vv.begin(), vv.end()), vv.end());	
+		pc[i] = vv;
 	}
 		
 	//2. 
-	vector<vector<string> > c = e.GetSetOfAlleles();
+	vector<vector<int> > c = e.GetSetOfAlleles();
 
 	//3. Get unique elements in c relative to pc
 	a0 = 0;
-	vector<std::string> w, x;
+	vector<int> w, x;
 	u.clear(); //clear old 2d string vector
 	u.resize(RefPloidyList.size()); //resize it in case the clear does not destroy the top level
 	for (i=0;i<pc.size();++i)
 	{
-		v = pc[i]; //v = alleles at locus i for ParentPath
+		vv = pc[i]; //vv = alleles at locus i for ParentPath
 		w = c[i];  //c = alleles at locus i for current node
 		
 		//use set_difference to find the elements in w that are unique relative to v
-		vector<std::string>().swap(x); //clear x
-		std::sort(v.begin(), v.end());
+		vector<int>().swap(x); //clear x
+		std::sort(vv.begin(), vv.end());
 		std::sort(w.begin(), w.end());
-		std::set_difference( w.begin(), w.end(), v.begin(), v.end(), std::inserter(x, x.end()) ); 
+		std::set_difference( w.begin(), w.end(), vv.begin(), vv.end(), std::inserter(x, x.end()) ); 
 		a0 = a0 + x.size(); //size of x is the number of alleles unique to current node relative to all nodes in parent path
 		
 		u[i] = x; //put alleles unique to current node into a 2d vector, one item for each locus
@@ -274,7 +275,7 @@ void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<
 	//1.
 	vector<double>().swap(z); //clear z
 	vector<double> zz;  //zz will hold a list of all frequencies for alleles added by current node
-	vector<std::string>::iterator it;
+	vector<int>::iterator it;
 	for (i=0;i<u.size();++i)
 	{
 		w = AlleleFrequencies[i].allelenames; //get the list of alleles for locus i
@@ -282,9 +283,9 @@ void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<
 		
 		for (j=0;j<u[i].size();++j)
 		{
-			s = u[i][j];//get name of one of the alleles unique to this accession, at locus i
+			int ss = u[i][j];//get name of one of the alleles unique to this accession, at locus i
 			//find its frequency by matching in w, the list of all allele names
-			it = std::find(w.begin(), w.end(), s); //search for current allele in list of all alleles
+			it = std::find(w.begin(), w.end(), ss); //search for current allele in list of all alleles
 			l = std::distance(w.begin(), it); //iterator to index
 			temp = z[l]; //get the frequency
 			zz.push_back(temp); //add it to the list of frequencies for all loci mashed together
@@ -306,13 +307,13 @@ void MyCalculatef(Node& e, vector<Node> AllNodes, vector<int> goalstate, vector<
 }
 
 //counts the number of alleles at each locus, eliminating redundancies by using set
-vector<int> MyCountAllelesAtEachLocus(vector<vector<std::string> > a)
+vector<int> MyCountAllelesAtEachLocus(vector<vector<int> > a)
 {
 	int b;
 	unsigned int i, j;
 	vector<int> AlleleCounts;
-	set<std::string> AlleleSet; //non-redundant list of alleles at a locus
-	vector<std::string> t;
+	set<int> AlleleSet; //non-redundant list of alleles at a locus
+	vector<int> t;
 
 	for (i=0;i<a.size();++i)
 	{
@@ -336,8 +337,8 @@ vector<int> MyGetUpdatedAlleleCounts(vector<std::string> ParentPath, vector<Node
 	unsigned int i, j, k;
 	std::string s, t;
 	
-	vector<vector<std::string> > pc(RefPloidyList.size()); //will hold only unique alleles accumulated at each locus, size to number of loci
-	vector<vector<std::string> > u; //holds set of alleles, temporarily
+	vector<vector<int> > pc(RefPloidyList.size()); //will hold only unique alleles accumulated at each locus, size to number of loci
+	vector<vector<int> > u; //holds set of alleles, temporarily
 	vector<int> w; //holds count of alleles at each locus
 	
 	///traverse the ParentPath to pick up all sets of alleles
@@ -452,12 +453,12 @@ double Node::Geta2() {return a2;}
 std::string Node::GetParent() {return Parent;}
 std::string Node::GetAccName() {return AccName;}
 vector<int> Node::GetAlleleCounts() {return AlleleCounts;}
-vector<vector<string> > Node::GetSetOfAlleles() {return SetOfAlleles;}
+vector<vector<int> > Node::GetSetOfAlleles() {return SetOfAlleles;}
 int Node::GetPopSize() {return PopSize;}
 
 //place info into class Node
 void Node::SetAccName(std::string p) {AccName = p;}
-void Node::SetAlleles(vector<vector<string> > q) {SetOfAlleles = q;}
+void Node::SetAlleles(vector<vector<int> > q) {SetOfAlleles = q;}
 void Node::SetAlleleCounts(vector<int> r) {AlleleCounts = r;}
 void Node::SetParent(std::string u) {Parent = u;}
 
@@ -508,11 +509,25 @@ vector<Node> SortedCostNodeList::Gets() {return s;}
 
 
 //A*
-int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlleleByPopList, vector<int> ActiveMaxAllelesList, vector<std::string> UniqLociNamesList, vector<int> ReferenceOrTargetKey, vector<std::string> FullAccessionNameList, vector<int> PloidyList, vector<int> PopSizes, vector<Alfreq> AlleleFrequencies, int parallelism_enabled, int ncpu)
+int aStar (
+	char* IdealFilePath, 
+	vector<vector<vector<int> > > ActiveAlleleByPopList, 
+	vector<int> ActiveMaxAllelesList, 
+	vector<std::string> UniqLociNamesList, 
+	vector<int> ReferenceOrTargetKey, 
+	vector<std::string> FullAccessionNameList, 
+	vector<int> PloidyList, 
+	vector<int> PopSizes, 
+	vector<Alfreq> AlleleFrequencies, 
+	int parallelism_enabled,
+	time_t start1
+	)
 {
 	//SET UP
 	unsigned int i;
-	
+	time_t start2;
+	time (&start2);
+
 	//get total number of alleles
 	int TotAlleles = 0;
 	for (i=0;i<ActiveMaxAllelesList.size();++i) TotAlleles = TotAlleles + ActiveMaxAllelesList[i];
@@ -563,7 +578,7 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 	node_start.SetAccName("start");
 	
 	//load a default set of alleles (just empty lists)
-	vector<vector<std::string> > foo(RefLociNamesList.size());
+	vector<vector<int> > foo(RefLociNamesList.size());
 	node_start.SetAlleles(foo); //add empty vectors for each locus
 	
 	node_start.SetAlleleCounts(startstate);
@@ -596,15 +611,14 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 	int l;
 	Node tempNode;
 	static const SortedCostNodeList emptyl; //this will be used to zero OPENlist between loops
-	std::string Soln; //holds whether a solution was found or not
+	//std::string Soln; //holds whether a solution was found or not
 
 	while (true)
 	{
-
 		//exit condition 1, OPENlist is empty so there is no solution
 		if (OPENlist.s.size() == 0) 
 		{
-			Soln = "no";
+			//Soln = "no";
 			cout << "Sorry, there is no solution for A* optimization.\n";
 			break;
 		}
@@ -621,20 +635,27 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 		ParentPath = MyReconstructPath(node_current, AllNodes); //reconstruct path
 		if (node_current.GetAccName() != "start")
 		{
+			time_t end1;
+			time (&end1);
+			double dif = difftime (end1,start1);
+			double dif2 = difftime (end1,start2);
+
 			cout 	<< "Adding accession: " << node_current.GetAccName()
 					<< "  Current core size: " << ParentPath.size() + 1
-					<< "  Alleles captured: " << std::accumulate(currentstate.begin(), currentstate.end(), 0) << "/" << std::accumulate(goalstate.begin(), goalstate.end(),0) << "\n";
+					<< "  Alleles captured: " << std::accumulate(currentstate.begin(), currentstate.end(), 0) << "/" << std::accumulate(goalstate.begin(), goalstate.end(),0) 
+					<< "  Elapsed time: " << dif2 << "s/" << dif << "s\n";
 		}
+		time (&start2);
 
 		//exit condition 2, current state of node_current = ActiveMaxAllelesList (which is goalstate)
 		if (currentstate == goalstate) 
 		{
-			Soln = "yes"; //node_current contains the final accession necessary, trace back its parents to get minimum core
+			//Soln = "yes"; //node_current contains the final accession necessary, trace back its parents to get minimum core
 			//trace back the ParentPath from node current to get the ideal core set
 			ParentPath = MyReconstructPath(node_current, AllNodes);
 			ParentPath.push_back(node_current.GetAccName());
 			
-			//output ordered core to terminal
+			//print ordered core to terminal
 			cout << "\nThe ideal core set contains "<<ParentPath.size()<<" accessions.\n";
 			cout << "One ideal core = ";
 			for (i=0;i<ParentPath.size();++i) 
@@ -715,6 +736,8 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 		s.clear();  //clear the vector<Node>, treated as public for input by multiple threads
 		s.resize(v.size()); //resize to number of possible successor nodes
 		
+		
+
 		#pragma omp parallel if(parallelism_enabled) 
 		{
 			//declare private variables
@@ -725,6 +748,7 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 			int l;
 			int vsize = v.size();  //unsigned int coerced to signed int so compiler doesn't squawk for using unsigned int for #pragma omp for iterator
 
+			
 			#pragma omp for
 			for (int i=0;i<vsize;++i)
 			{
@@ -736,7 +760,7 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 
 				//set AlleleCounts to unique alleles at all loci in ParentPath of node_current + this successor
 				ParentPath.clear();
-				ParentPath.resize((int)node_current.Getf0() + 1);
+				ParentPath.resize(node_current.Getf0() + 1);
 				ParentPath = MyReconstructPathII(AllNodes[l], AllNodes);
 
 				/*
@@ -770,11 +794,13 @@ int aStar (char* IdealFilePath, vector<vector<vector<std::string> > > ActiveAlle
 				//accumulate updated nodes into a single vector, to be pushed onto OPENlist later
 				s[i] = AllNodes[l];
 
-				}
-			}//end pragma omp parallel if
+			}
+		}//end pragma omp parallel if
 
-			//add vector of updated nodes onto OPENlist via .pushs, which sorts them properly
-			OPENlist.pushs(s);
-		}
+
+		//add vector of updated nodes onto OPENlist via .pushs, which sorts them properly
+		OPENlist.pushs(s);
+	}//end while (true)
+	
 	return 0;
 }

@@ -1,6 +1,6 @@
 #include "m+.hpp"
 	
-int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vector<int> ActiveMaxAllelesList, std::string Standardize, double& RandomActiveDiversity, double& AltRandomActiveDiversity)
+int MyCalculateDiversity(vector<vector<vector<int> > > AlleleList, vector<int> ActiveMaxAllelesList, std::string Standardize, std::mt19937_64& rng, double& RandomActiveDiversity, double& AltRandomActiveDiversity)
 {
 	/*AlleleList structure:
 		  Pop1..r
@@ -9,11 +9,8 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 	int NumLoci = AlleleList[0].size();
 	int i, j, M;
 	unsigned int k;
-	vector<std::string> NewArray;
-	vector<std::string> CurrLoc;
-	vector<std::string> ListToFilter;
 	vector<int> Mlist(NumLoci);
-	set<std::string> AlleleSet;
+	set<int> AlleleSet;
 
 	if (NumLoci == 0)
 	{
@@ -61,6 +58,19 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 			M = M + Mlist[k];
 		}
 		
+		/*
+				//print out the Mlist
+				for (unsigned int i=0;i<Mlist.size();++i)
+				{
+					if (Mlist[i] > ActiveMaxAllelesList[i])
+					{
+						cout << "Mlist[i] > ActiveMaxAllelesList[i]\n";
+						cout << "Mlist[" << i << "]=" << Mlist[i] << " MaxList[" << i << "]=" << ActiveMaxAllelesList[i] << " sss[" << i << "]=" << sss[i] << "\n";
+						cin.get();
+					}
+				}
+		*/
+
 		//6. Determine the way variables are updated so that the value for the desired optimality 
 		//criterion is RandomActiveDiversity, while the other is AltRandomActiveDiversity.  
 		//This way, the output can contain information on both M+ and M criteria, 
@@ -127,11 +137,12 @@ void mp(
 	int SamplingFreq,
 	int NumReplicates,
 	char* OutFilePath,
+	std::mt19937_64& rng,
 	std::string Kernel,
 	vector<int> KernelAccessionIndex,
 	vector<int> AccessionNameList,
-	vector<vector<vector<std::string> > > ActiveAlleleByPopList,
-	vector<vector<vector<std::string> > > TargetAlleleByPopList,
+	vector<vector<vector<int> > > ActiveAlleleByPopList,
+	vector<vector<vector<int> > > TargetAlleleByPopList,
 	vector<int> ActiveMaxAllelesList,
 	vector<int> TargetMaxAllelesList,
 	vector<std::string> FullAccessionNameList,
@@ -151,7 +162,7 @@ void mp(
 	int l=0;
 	for (int i=MinCoreSize;i<MaxCoreSize+1;i=i+SamplingFreq)
 	{
-	for (int j=0;j<NumReplicates;j++)
+		for (int j=0;j<NumReplicates;j++)
 		{
 			l++;
 		}
@@ -183,10 +194,10 @@ void mp(
 		double AltOptimizedTargetDiversity;
 		double best;
 		double nnew;
-		vector<vector<vector<std::string> > > AlleleList;
-		vector<vector<vector<std::string> > > CoreAlleles;
-		vector<vector<vector<std::string> > > TdTempList;
-		vector<vector<vector<std::string> > > BestSubCoreAlleles;
+		vector<vector<vector<int> > > AlleleList;
+		vector<vector<vector<int> > > CoreAlleles;
+		vector<vector<vector<int> > > TdTempList;
+		vector<vector<vector<int> > > BestSubCoreAlleles;
 		std::string Standardize = "yes";  //a run that mimics the MSTRAT approach can be accomplished by setting Standardize="no", and setting up the var file so that each column in the .dat file is treated as a single locus, rather than two (or more) adjacent columns being treated as a single codominant locus.
 		vector<int> AccessionsInCore;
 		vector<int> AccessionsInSubCore;
@@ -197,6 +208,7 @@ void mp(
 		vector<int> bestcore;
 		vector<std::string> TempListStr;
 	
+		/*
 		//seed the random number generator for each thread
 		int tt;
 		tt = (time(NULL));
@@ -207,6 +219,18 @@ void mp(
 		else
 		{
 			srand ( tt ^ omp_get_thread_num() ); //seed random number generator differently for each thread
+		}
+		*/
+		
+		//seed the random number generator, for each core if parallelism enabled
+		unsigned long long seed = (unsigned long long)chrono::high_resolution_clock::now().time_since_epoch().count();
+		if (parallelism_enabled == 0) 
+		{
+			std::mt19937_64 rng(seed+1);//random-number engine used (Mersenne-Twister in this case)
+		}
+		else
+		{
+			std::mt19937_64 rng(seed*(omp_get_thread_num()+1));
 		}
 		
 	
@@ -233,7 +257,7 @@ void mp(
 		int rsteps = 1 + (int)floor( (MaxCoreSize - MinCoreSize) / SamplingFreq ); //number of steps from MinCoreSize to MaxCoreSize
 
 		#pragma omp for
-			for (int rnr = 0; rnr<rsteps*NumReplicates;++rnr)
+			for (int rnr=0;rnr<rsteps*NumReplicates;++rnr)
 			{
 				r = MinCoreSize + ((rnr / NumReplicates) * SamplingFreq); //int rounds to floor
 				nr = rnr % NumReplicates; // modulo
@@ -271,7 +295,9 @@ void mp(
 				for (unsigned int i=KernelAccessionIndex.size();i<r;i++)
 				{
 					//choose an accession randomly from those available
-					RandAcc = rand() % TempList.size();
+					//RandAcc = rand() % TempList.size();
+					std::uniform_int_distribution<int> uni(0,TempList.size()-1); // define random number generator interval to select items from TempList
+					RandAcc = uni(rng); //rng is mt19937_64
 					//add it to the list
 					AccessionsInCore[i] = TempList[RandAcc];
 				
@@ -294,7 +320,7 @@ void mp(
 				AlleleList.clear();
 				AlleleList = CoreAlleles;
 		
-				MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
+				MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, rng, RandomActiveDiversity, AltRandomActiveDiversity);
 				//in MyCalculateDiversity, latter two variables are updated as references
 				//save them away in non-updated variables
 				StartingRandomActiveDiversity = RandomActiveDiversity;
@@ -308,7 +334,7 @@ void mp(
 					b = AccessionsInCore[j];
 					AlleleList[j] = TargetAlleleByPopList[b];
 				}
-				MyCalculateDiversity(AlleleList, TargetMaxAllelesList, Standardize, RandomTargetDiversity, AltRandomTargetDiversity);
+				MyCalculateDiversity(AlleleList, TargetMaxAllelesList, Standardize, rng, RandomTargetDiversity, AltRandomTargetDiversity);
 
 	
 				//BEGIN OPTIMIZATION
@@ -332,7 +358,7 @@ void mp(
 					
 					AlleleList = CoreAlleles;
 					
-					MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
+					MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, rng, RandomActiveDiversity, AltRandomActiveDiversity);
 					best = RandomActiveDiversity; //best is equivalent to OptimizedActiveDiversity
 					AltOptimizedActiveDiversity = AltRandomActiveDiversity;
 				}
@@ -382,7 +408,7 @@ void mp(
 							--5.5. simultaneous to the calculation, keep track of which subcore is best
 							*/
 				
-							MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, RandomActiveDiversity, AltRandomActiveDiversity);
+							MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, rng, RandomActiveDiversity, AltRandomActiveDiversity);
 							nnew = RandomActiveDiversity;
 	
 							if (nnew >= best) // >= allows sideways movement during hill climbing
@@ -415,7 +441,8 @@ void mp(
 						}
 				
 						//shuffle the list of remaining accessions, so addition order is not predictable
-						std::random_shuffle (TempList.begin(), TempList.end());
+						//std::random_shuffle (TempList.begin(), TempList.end());
+						std::shuffle (TempList.begin(), TempList.end(), rng);
 					
 						//add each remaining accession consecutively, calculate diversity, test 
 						//whether it is better than the prior one
@@ -427,20 +454,26 @@ void mp(
 							//define the core
 							TempList2 = BestSubCore;
 							TempList2.resize( TempList2.size() + 1 );
-							//TempList2.push_back(i);
 							TempList2[TempList2.size()-1] = bsc; //add new accession to last vector element
 							AccessionsInCore = TempList2;
 				
 							//assemble the allelelist for the core
 							TdTempList = BestSubCoreAlleles;
 							TdTempList.resize( TdTempList.size() + 1 );
-							//TdTempList.push_back( ActiveAlleleByPopList[i] );
 							TdTempList[TdTempList.size()-1] = ActiveAlleleByPopList[bsc];
 							AlleleList = TdTempList;
 				
 							//calculate diversity
-							MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, nnew, TempAltOptimizedActiveDiversity); 
-			
+							MyCalculateDiversity(AlleleList, ActiveMaxAllelesList, Standardize, rng, nnew, TempAltOptimizedActiveDiversity); 
+		
+							/* print progress of search
+								for (unsigned int  z=0;z<AccessionsInCore.size();++z) cout << AccessionsInCore[z] << ",";
+								cout << "  ";
+								for (unsigned int  z=0;z<bestcore.size();++z) cout << bestcore[z] << ",";					
+								cout << "  " << nnew << "  " << best << "  " << StartingDiversity << "  ";
+								cout << "\n";					
+							*/
+
 							//test whether current diversity is higher than the best diversity found so far
 							if (nnew >= best) // >= allows sideways movement during hill climbing
 							{
@@ -451,6 +484,13 @@ void mp(
 							}
 						}
 
+					/* print progress of search
+						cout << "best=" << best << " StartingDiversity=" << StartingDiversity << " r=" << r << " ";
+						for (unsigned int z=0;z<bestcore.size();++z) cout << bestcore[z] << ",";
+						cout << "\n";
+
+					*/
+
 						AccessionsInCore = bestcore; //define starting variable for next MSTRAT iteration
 			
 						//if there has been no improvement from the prior iteration, you have reached
@@ -460,9 +500,11 @@ void mp(
 							plateau++;
 							if (plateau > 0) break;
 						}
-						//update starting value and repeat
-						else if (best > StartingDiversity) StartingDiversity = best;
-					
+						else if (best > StartingDiversity) 
+						{
+							//update starting values and repeat
+							StartingDiversity = best;
+						}
 					} //while(true) endless loop
 				}
 	
@@ -478,7 +520,7 @@ void mp(
 		
 		
 				//calculate diversity at target loci based upon the optimized core selection
-				MyCalculateDiversity(AlleleList, TargetMaxAllelesList, Standardize, OptimizedTargetDiversity, AltOptimizedTargetDiversity);
+				MyCalculateDiversity(AlleleList, TargetMaxAllelesList, Standardize, rng, OptimizedTargetDiversity, AltOptimizedTargetDiversity);
 
 		
 				//8. Assemble stats for optimized core and add to output vectors
