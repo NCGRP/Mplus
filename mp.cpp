@@ -25,24 +25,22 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 		//use set to eliminate redundancies
 		for (i=0;i<NumLoci;i++)
 		{
-
 			//3. pass alleles from the same locus into a single set, for all populations in core, to remove redundancies
 			AlleleSet.clear(); //clear AlleleSet
 			for (j=0;j<CoreSize;j++)
 			{
-				CurrLoc = AlleleList[j][i];
-				for (k=0;k<CurrLoc.size();++k)
+				for (k=0;k<AlleleList[j][i].size();++k)
 				{
-					AlleleSet.insert(CurrLoc[k]); //locus i for all population j
+					AlleleSet.insert(AlleleList[j][i][k]); //locus i for all population j
 				}
 			}
-			
+
 			if (AlleleSet.size() == 0) M=0;
 			else M=AlleleSet.size();
 			
 			Mlist[i] = M;
 		}
-		
+
 		//5. standardize the M values to the maximum possible number of alleles at that locus, 
 		//and add them up to get final estimate of standardized allelic diversity in the core.
 		//Then divide by the number of loci to get a number that is comparable across data sets.
@@ -57,7 +55,6 @@ int MyCalculateDiversity(vector<vector<vector<std::string> > > AlleleList, vecto
 		SAD = SADtemp / NumLoci;
 		
 		//calculate M by simply adding up the Mlist
-		//M = std::accumulate(Mlist.begin(),Mlist.end(),0);  <--std::accumulate is unreliable so it has been removed
 		M = 0;
 		for (k=0;k<Mlist.size();++k)
 		{

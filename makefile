@@ -1,5 +1,5 @@
-CXX = g++
-FLAGS = -O2 -Wall
+CXX = g++-4.9
+FLAGS = -std=gnu++11 -O2 -Wall
 
 all: m+.o mp.o aStar.o 
 	${CXX} ${FLAGS} -o m+1 m+.o mp.o aStar.o -fopenmp
@@ -15,20 +15,3 @@ aStar.o: aStar.cpp m+.hpp
 
 clean:
 	rm -rf *.o
-	
-
-
-
-
-#original make
-#all: m+.o aStar.o 
-#	g++ -o m+ m+.o aStar.o -fopenmp
-#
-#m+.o: m+.cpp m+.hpp
-#	g++ -c m+.cpp -fopenmp
-#
-#aStar.o: aStar.cpp m+.hpp
-#	g++ -c aStar.cpp -fopenmp
-#
-#clean:
-#	rm *.o

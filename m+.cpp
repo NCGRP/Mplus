@@ -1,37 +1,5 @@
 #include "m+.hpp"
 
-
-/*
-To compile:  use "make"
-Usage: m+ varfile datfile [-m mincoresize maxcoresize samplingfreq reps outputfile]
-		[-k kernelfile] [-a idealcorefile]
-where, 
-varfile = path to MSTRAT .var file
-datfile = path to MSTRAT .dat file
-
-Options:
--m mincoresize maxcoresize samplingfreq reps outputfile = compute the optimal accessions
-		for a given core size using the M+ search algorithm. Arguments are as follows:
-		mincoresize maxcoresize = integers specifying minimum and maximum core size. 
-			Usually mincoresize = 2, maxcoresize = total number of accessions
-		samplingfreq = e.g. integer value 5 will cause coresize=2 then coresize=7, then 12, 
-			and so on, to be sampled.
-		reps = number of replicate core sets to calculate for a particular core size
-		outputfile = path to output
--k kernelfile = use an MSTRAT .ker file to specify mandatory members of the 
-        core.  The number of mandatory accessions must therefore be less than or equal to 
-        mincoresize.  Option must be used with -m.
--a idealcorefile = compute the minimum set of accessions necessary to retain all variation,
-		i.e. the "ideal" or "best" core, using the A* search algorithm, write output to 
-		bestcorefile.
-
-Notes:  All input files must have Unix line breaks.
-
-example: ./m+ ./beet.var ./beet.dat -m 3 28 2 3 ./beetout.txt -k beet.ker -a beetideal.txt
-*/
-
-
-
 /***************FUNCTIONS*****************/
 
 
@@ -95,7 +63,7 @@ vector<int> GetPloidy(vector<std::string> AllLociNameList, vector<std::string> U
 	return PloidyList;
 }
 
-int MyProcessVarFile(char* VarFilePath, vector<int>& AllColumnIDList, vector<std::string>& AllLociNameList, vector<int>& ActiveColumnIDList, vector<std::string>& ActiveLociNameList, vector<int>& TargetColumnIDList, vector<std::string>& TargetLociNameList, vector<vector<int> >& ColKeyToAllAlleleByPopList, vector<int>& ReferenceOrTargetKey, vector<int>& PloidyList, vector<std::string>& UniqLociNameList)
+int MyProcessVarFile(char* VarFileBuffer, vector<int>& AllColumnIDList, vector<std::string>& AllLociNameList, vector<int>& ActiveColumnIDList, vector<std::string>& ActiveLociNameList, vector<int>& TargetColumnIDList, vector<std::string>& TargetLociNameList, vector<vector<int> >& ColKeyToAllAlleleByPopList, vector<int>& ReferenceOrTargetKey, vector<int>& PloidyList, vector<std::string>& UniqLociNameList)
 {
     //declare variables
     std::string foo;
@@ -613,6 +581,7 @@ int main( int argc, char* argv[] )
 	unsigned int i, j;
 	int b;
 	string DoM = "no"; //switch to perform M+ optimization
+	string Rarify = "no"; //switch to use rarefaction to correct allele count for sample size differences
 	string Kernel = "no"; //switch to include a mandatory set in the core
 	string Ideal = "no"; //switch to compute the ideal core, using A* algorithm
 	vector<std::string> KernelAccessionList;
@@ -630,6 +599,11 @@ int main( int argc, char* argv[] )
 			SamplingFreq = atoi(argv[i+3]);
 			NumReplicates = atoi(argv[i+4]);
 			OutFilePath = argv[i+5];
+		}
+
+		if ( string(argv[i]) == "-r" ) 
+    	{
+        	Rarify = "yes";
 		}
 
 		if ( string(argv[i]) == "-k" ) 
@@ -690,6 +664,11 @@ int main( int argc, char* argv[] )
 		cout << "    NumReplicates = " << NumReplicates << "\n";
 		cout << "    OutFilePath = " << OutFilePath << "\n";
 	}
+	if (Rarify == "yes")
+	{
+		cout << "  -r invoked:\n";
+		cout << "    Using rarefaction for M+ search\n";
+	}
 	if (Kernel == "yes") 
 	{
 		cout << "  -k invoked:\n";
@@ -702,52 +681,69 @@ int main( int argc, char* argv[] )
 	}
 	
 	//catch some errors in the command line
-	if (MinCoreSize > MaxCoreSize) 
+	if (DoM == "yes")
 	{
-		cout << "ERROR:  The minimum core size ("<<MinCoreSize<<") is greater than the maximum core size.  Please correct the command line arguments.  Quitting...\n\n";
-    	exit (EXIT_FAILURE);
-    }
-    if (MinCoreSize == 1)
-    {
-    	cout << "ERROR:  A minimum core size of 1 is not allowed.  Please correct the command line.  Quitting...\n\n"; 
-		exit (EXIT_FAILURE);
+		if (MinCoreSize > MaxCoreSize) 
+		{
+			cout << "ERROR:  The minimum core size ("<<MinCoreSize<<") is greater than the maximum core size.  Please correct the command line arguments.  Quitting...\n\n";
+			exit (EXIT_FAILURE);
+		}
+		if (MinCoreSize == 1)
+		{
+			cout << "ERROR:  A minimum core size of 1 is not allowed.  Please correct the command line.  Quitting...\n\n"; 
+			exit (EXIT_FAILURE);
+		}
+		if (Kernel == "yes" && Ideal == "yes" && DoM == "no")
+		{
+			cout << "ERROR:  A* search cannot be performed with a kernel file.  Please correct the command line.  Quitting...\n\n";
+			exit (EXIT_FAILURE);
+		}
+		if (KernelAccessionList.size() > MinCoreSize)
+		{
+			cout << "ERROR:  The number of mandatory accessions ("<<KernelAccessionList.size()
+				 <<") is greater than the minimum core size ("<<MinCoreSize
+				 <<").  Please modify the kernel file or the command line argument.  Quitting...\n\n";
+				exit (EXIT_FAILURE);
+		}
 	}
 	if (Kernel == "yes" && Ideal == "yes" && DoM == "no")
 	{
 		cout << "ERROR:  A* search cannot be performed with a kernel file.  Please correct the command line.  Quitting...\n\n";
-		exit (EXIT_FAILURE);
+		exit (EXIT_FAILURE); //master0 reports above, everybody quits here
 	}
-    if (KernelAccessionList.size() > MinCoreSize)
-    {
-		cout << "ERROR:  The number of mandatory accessions ("<<KernelAccessionList.size()
-			 <<") is greater than the minimum core size ("<<MinCoreSize
-        	 <<").  Please modify the kernel file or the command line argument.  Quitting...\n\n";
-			exit (EXIT_FAILURE);
-	}
-	
 
 	//DETERMINE MACHINE CONFIGURATIION
 	int ncpu = sysconf( _SC_NPROCESSORS_ONLN );
-	
+
 	//PROCESS INPUT DATA
 	
 	//start the clock
 	time_t starti,endi;
 	time (&starti);
 
+	//read the file into a buffer using fread
+	unsigned long long f = 0; //var (and later, dat) file size
+	f = (unsigned long long)filesize(VarFilePath); 
+	f = f + 1; //increase by 1 to accomodate \0 string terminator
+	char * VarFileBuffer = (char*)malloc(f); //initialize and size the data structure to hold contents of var file
+
+	char * d = MyBigRead(VarFilePath);
+	strcpy(VarFileBuffer, d); //convert the char* to a char array, presized from prior MPI_Bcast
+	strcpy(d,""); //clear char*
+
 	//.var file
 	vector<int> AllColumnIDList;
 	vector<std::string> AllLociNameList;
 	vector<int> ActiveColumnIDList;
 	vector<std::string> ActiveLociNameList;
-    vector<int> TargetColumnIDList;
+	vector<int> TargetColumnIDList;
 	vector<std::string> TargetLociNameList;
 	vector<vector<int> > ColKeyToAllAlleleByPopList;
 	vector<int> ReferenceOrTargetKey;
 	vector<int> PloidyList;
 	vector<std::string> UniqLociNamesList;
 
-	MyProcessVarFile(VarFilePath, AllColumnIDList, AllLociNameList, ActiveColumnIDList, ActiveLociNameList, TargetColumnIDList, TargetLociNameList, ColKeyToAllAlleleByPopList, ReferenceOrTargetKey, PloidyList, UniqLociNamesList ); 
+	MyProcessVarFile(VarFileBuffer, AllColumnIDList, AllLociNameList, ActiveColumnIDList, ActiveLociNameList, TargetColumnIDList, TargetLociNameList, ColKeyToAllAlleleByPopList, ReferenceOrTargetKey, PloidyList, UniqLociNamesList ); 
 	//all but first variable above are updated as references in MyProcessVarFile
 
 		//Print out ActiveColumnIDList and ActiveLociNameList
@@ -763,7 +759,7 @@ int main( int argc, char* argv[] )
 				cout << ActiveLociNameList[i] << "\t" << (ActiveColumnIDList[i] + 1) << "\n";
 			}
 		}
-		
+
 		//Print out TargetColumnIDList and TargetLociNameList
 		if (TargetColumnIDList.size() == 0)
 		{
@@ -827,17 +823,17 @@ int main( int argc, char* argv[] )
 		/*	
 		//Print out FullAccessionNameList
 		cout << "\n\nPopulation names\n";
-		for (i=0; i<FullAccessionNameList.size();i++) cout << FullAccessionNameList[i] << "\n";
+		for (unsigned int i=0; i<FullAccessionNameList.size();i++) cout << FullAccessionNameList[i] << "\n";
 		
 		//Print out lists of unique reference alleles from ActiveAlleleByPopList
 		cout << "ActiveAlleleByPopList:\n";
-		for (i=0; i<ActiveAlleleByPopList.size() ;i++)
+		for (unsigned int i=0; i<ActiveAlleleByPopList.size() ;i++)
 		{
 			cout << "Population " << i << "\n";
-			for (j=0;j<ActiveAlleleByPopList[i].size();j++)
+			for (unsigned int j=0;j<ActiveAlleleByPopList[i].size();j++)
 			{
 				cout << "Locus " << j << "\n";
-				for (k=0;k<ActiveAlleleByPopList[i][j].size();k++)
+				for (unsigned int k=0;k<ActiveAlleleByPopList[i][j].size();k++)
 				{
 					cout << ActiveAlleleByPopList[i][j][k] << ",";
 				}
@@ -848,13 +844,13 @@ int main( int argc, char* argv[] )
 		
 		//Print out lists of unique target alleles from TargetAlleleByPopList
 		cout << "TargetAlleleByPopList:\n";
-		for (i=0; i<TargetAlleleByPopList.size() ;i++)
+		for (unsigned int i=0; i<TargetAlleleByPopList.size() ;i++)
 		{
 			cout << "Population " << i << "\n";
-			for (j=0;j<TargetAlleleByPopList[i].size();j++)
+			for (unsigned int j=0;j<TargetAlleleByPopList[i].size();j++)
 			{
 				cout << "Locus " << j << "\n";
-				for (k=0;k<TargetAlleleByPopList[i][j].size();k++)
+				for (unsigned int k=0;k<TargetAlleleByPopList[i][j].size();k++)
 				{
 					cout << TargetAlleleByPopList[i][j][k] << ",";
 				}
@@ -862,18 +858,19 @@ int main( int argc, char* argv[] )
 			}
 		}
 		*/
-		
-
 
 	//CALCULATE SOME USEFUL VARIABLES
 	//get total number of accessions
 	unsigned int NumberOfAccessions = ActiveAlleleByPopList.size();
 	
 	//catch a possible error in the command line
-	if (MaxCoreSize > NumberOfAccessions)
+	if (DoM == "yes")
 	{
-		cout << "ERROR:  Maximum core size of "<<MaxCoreSize<< " is greater than the number of accessions.  Please set to a lower value. Quitting...\n\n";
-		exit (EXIT_FAILURE);
+		if (MaxCoreSize > NumberOfAccessions)
+		{
+			cout << "ERROR:  Maximum core size of "<<MaxCoreSize<< " is greater than the number of accessions.  Please set to a lower value. Quitting...\n\n";
+			exit (EXIT_FAILURE);
+		}
 	}
 
 	//get number of loci
@@ -893,18 +890,22 @@ int main( int argc, char* argv[] )
 	
 	//1. remove target alleles from AllAlleles
 	vector<std::string> AllRefAlleles = MyRemoveTargetAlleles(AllAlleles, AllColumnIDList, TargetColumnIDList);
+	vector<std::string>().swap(AllAlleles); //clear variable, no longer needed
 	
 	//2. put AllRefAlleles into a 2d vector, samples are rows
 	vector<vector<std::string> > RefAllelesIntoRows(IndivPerPop.size(), vector<std::string> ( ActiveLociNameList.size() ));
 	MyMakeRefAllelesIntoRows(AllRefAlleles, ActiveLociNameList, RefAllelesIntoRows);
+	vector<std::string>().swap(AllRefAlleles); //clear variable, no longer needed
 	
 	//3. extract alleles into vector of pairs (ignores missing data 9999)
 	vector<std::pair<std::string, vector<std::string> > > RefAllelesByLocus; // first = locus name, second = vector of all alleles present, updated as reference below
 	MyMakeRefAllelesByLocus(RefAllelesIntoRows, ActiveLociNameList, RefAllelesByLocus);
+	vector<vector<std::string> >().swap(RefAllelesIntoRows); //clear variable, no longer needed
 	
 	//4. calculate allele frequencies, finally (ignores missing data 9999)
 	vector<Alfreq> AlleleFrequencies;//(RefAllelesByLocus.size());  //declare vector of struct Alfreq
 	MyCalculateAlleleFrequencies(RefAllelesByLocus, AlleleFrequencies);
+	vector<std::pair<std::string, vector<std::string> > >().swap(RefAllelesByLocus); //clear variable, no longer needed
 	
 		/*
 		//print out structs containing allele frequencies
@@ -952,20 +953,115 @@ int main( int argc, char* argv[] )
 	}
 	//reverse sort KernelAccessionIndex, necessary later
 	std::sort(KernelAccessionIndex.begin(), KernelAccessionIndex.end(), std::greater<int>());
-		
+
+	//seed the random number generator for each procid
+	unsigned long long seed = (unsigned long long)chrono::high_resolution_clock::now().time_since_epoch().count();
+	std::mt19937_64 rng(seed);    // random-number engine used (Mersenne-Twister in this case), seeded with time
+
 	//get maximum number of alleles possible at each locus for active and target
+	vector<unsigned int> sss;  //sss is a vector holding the smallest non-zero sample size for each Active locus, only relevant to Rarify=yes
+	vector<unsigned int> sst;  //sst is a vector holding the smallest non-zero sample size for each Target locus, only relevant to Rarify=yes
 	vector<int> ActiveMaxAllelesList, TargetMaxAllelesList;
-	ActiveMaxAllelesList = MyGetMaxs(ActiveAlleleByPopList);
-	TargetMaxAllelesList = MyGetMaxs(TargetAlleleByPopList);
+	sss = Mysss(ActiveAlleleByPopList);
+	sst = Mysss(TargetAlleleByPopList);
+	ActiveMaxAllelesList = MyGetMaxs(ActiveAlleleByPopList, rng);
+	TargetMaxAllelesList = MyGetMaxs(TargetAlleleByPopList, rng);
+
+	/*
+		//Print out alleles from TargetAlleleByPopList
+		if (procid == 1) 
+		{
+			vector<int> si;
+			for (i=0;i<TargetAlleleByPopList.size() ;i++)
+			{
+				cout << "PrePopulation " << FullAccessionNameList[i] << "\n";
+				for (j=0;j<TargetAlleleByPopList[i].size();j++)
+				{
+					cout << "PreLocus " << j << ", ";
+					cout << "TargetAlleleByPopList[" << i << "][" << j << "].size()=" << TargetAlleleByPopList[i][j].size() << ", ";
+					si = TargetAlleleByPopList[i][j];
+					for (std::vector<int>::iterator it=si.begin(); it!=si.end(); ++it)
+						cout << *it << ",";
+					cout << "\n";
+				}
+			}
+		}
+	*/
+
+	//If Rarify="yes", reduce the Active(Target)AlleleByPopList to the smallest non-zero sample size for each locus
+	//This is the rarification step. It is performed by master node then passed to other procids 
+	//using MPI_Bcast so that the same rarefied data set is used by all procs.
+	if (Rarify == "yes")
+	{
+		cout << "    Rarefaction...\n";
 		
+		//subsample the Active(Target)MaxAllelesList
+		ActiveAlleleByPopList = MyRarifyData(ActiveAlleleByPopList, procid, sss, rng);
+		TargetAlleleByPopList = MyRarifyData(TargetAlleleByPopList, procid, sst, rng);
+
+		//test whether all smallest sample sizes are zero for ActiveAlleleByPopList after rarefaction
+		bool zerovec = std::any_of(sss.begin(), sss.end(), [](unsigned int i) { return i==0; });
+		if (zerovec)
+		{
+			if ( procid == 0 ) cout << "\nERROR:  Some sample sizes = 0 after rarefaction.  Remove loci with missing data for all members of an accession.  Quitting...\n\n"; 
+			exit (EXIT_FAILURE); //master0 reports above, everybody quits here
+		}
+		
+		//recalculate Active(Target)MaxAllelesList
+		ActiveMaxAllelesList = MyGetMaxs(ActiveAlleleByPopList, rng);
+		TargetMaxAllelesList = MyGetMaxs(TargetAlleleByPopList, rng);
+	}
+	
+	/*
+		//Print out alleles from ActiveAlleleByPopList
+		if (procid == 1) 
+		{
+			vector<int> si;
+			for (i=0;i<ActiveAlleleByPopList.size() ;i++)
+			{
+				cout << "PostPopulation " << FullAccessionNameList[i] << "\n";
+				for (j=0;j<ActiveAlleleByPopList[i].size();j++)
+				{
+					cout << "PostLocus " << j << ", ";
+					cout << "ActiveAlleleByPopList[" << i << "][" << j << "].size()=" << ActiveAlleleByPopList[i][j].size() << ", ";
+					si = ActiveAlleleByPopList[i][j];
+					for (std::vector<int>::iterator it=si.begin(); it!=si.end(); ++it)
+						cout << *it << ",";
+					cout << "\n";
+				}
+			}
+			//print out smallest sample size
+			for (unsigned int i=0;i<sss.size();++i) cout << sss[i] << ",";
+			cout << "\n";
+		}
+	
+		//print the *MaxAllelesList
+		for (unsigned int i=0;i<ActiveMaxAllelesList.size();++i)
+		{
+			cout << "ActiveMaxAllelesList[" << i << "]=" << ActiveMaxAllelesList[i] << "\n";
+		}
+		for (unsigned int i=0;i<TargetMaxAllelesList.size();++i)
+		{
+			cout << "TargetMaxAllelesList[" << i << "]=" << TargetMaxAllelesList[i] << "\n";
+		}
+	*/	
+	
+	//clean up a little
+	vector<unsigned int>().swap(sss);
+	vector<unsigned int>().swap(sst);	
+
 	//stop the clock
 	time (&endi);
 	double dif = difftime (endi,starti);
-	cout << "Input files processed.  Elapsed time = "<< dif << " seconds.\n\n";
-	
-	cout << "Number of accessions = " << NumberOfAccessions << ", Number of loci = " << NumLoci;
-	if (Kernel == "yes") cout << ", Number of kernel accessions = " << KernelAccessionList.size() << "\n\n";
-	else cout << "\n\n";
+		if (dif == 1)
+			cout << "Input files processed.  Elapsed time = "<< dif << " second.\n\n";
+		else
+			cout << "Input files processed.  Elapsed time = "<< dif << " seconds.\n\n";
+		
+			cout << "Number of accessions = " << NumberOfAccessions << ", Number of reference loci = " << NumLoci 
+			<< "\n  Number of target loci = "<< TargetAlleleByPopList[1].size();
+		if (Kernel == "yes") cout << ", Number of kernel accessions = " << KernelAccessionList.size() << "\n\n";
+		else cout << "\n\n";
 	
 	
 	//PERFORM A*
@@ -1021,6 +1117,7 @@ int main( int argc, char* argv[] )
 		SamplingFreq,
 		NumReplicates,
 		OutFilePath,
+		rng,
 		Kernel,
 		KernelAccessionIndex,
 		AccessionNameList,
