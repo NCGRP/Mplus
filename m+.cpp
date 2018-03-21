@@ -553,139 +553,6 @@ vector<unsigned int> Mysss(vector<vector<vector<int> > > AlleleByPopList)
 	return sss;
 }
 
-/*ORIG MyProcessDatFileIII
-int MyProcessDatFileIII(char* DatFileBuffer, vector<int> AllColumnIDList, vector<std::string> AllLociNameList, vector<vector<int> > ColKeyToAllAlleleByPopList, vector<vector<set<std::string> > >& AllAlleleByPopListSet, vector<std::string>& FullAccessionNameList, vector<std::string>& IndivPerPop, vector<std::string>& AllAlleles)
-{
-	//declare variables
-    std::string foo;
-    vector<std::string> foovector;
-    std::string OldLocusName;
-    std::string CurrLocusName;
-    vector<std::string> LocusNames;
-    vector<vector<std::string> > ActiveAlleleList;
-    vector<std::string> OldAlleles;
-    vector<vector<std::string> > TempList2d;
-    vector<std::string> FilteredData;
-    vector<std::string> ListToFilter;
-    std::string IsNewPop = "no";
-    vector<std::string>::iterator it;
-
-    unsigned int i,j,k,l;
-    vector<std::string> bufvec;
-    std::string NewPopID;
-    std::string OldPopID = "init*@#rt4"; //use an unlikely population name for the initialization value
-    vector<std::string> TempList;
-    std::string NewAllele;
-
-	//read the whole file into a buffer using fread
-    char * buffer;
-	buffer = MyBigRead(DatFilePath);
-	stringstream s(buffer); //put giant char array into a stream
-	
-    //read buffer into a vector, one line per item
-    while (getline(s, foo))//get line from s, put in foo, consecutively
-    {
-	 	bufvec.push_back(foo);  
-	}
-	
-	//sort vector so that individuals from the same population form consecutive elements
-	std::sort(bufvec.begin(), bufvec.end()); //no need to use fancy sort, lexicographic should be fine
-	
-	//break up vector into a 3d vector by population:  { { {pop1ind1elems},{pop1ind2elems},...}, { {pop2ind1elems},{pop1ind2elems},...} }
-	vector<vector<vector<std::string> > > ByPop3d;
-	for (i=0;i<bufvec.size();++i)
-	{
-		TempList = split(bufvec[i]); //split line i on whitespace	
-		NewPopID = TempList[0];
-		IndivPerPop.push_back(NewPopID); //add the pop ID to a list to calc pop sizes later
-
-		if (NewPopID != OldPopID) //then create a new population in ByPop2D
-		{
-			ByPop3d.resize(ByPop3d.size() + 1);
-			
-			//add the new population name to the AccessionNameList
-			FullAccessionNameList.push_back (NewPopID);
-		}
-		
-		//push vector TempList, containing elements on current line, onto last item of ByPop3d, which might be a new population as added just above
-		ByPop3d[ByPop3d.size()-1].push_back(TempList);
-		
-		OldPopID = NewPopID; 
-	}
-	
-	//print out ByPop3d
-	for (i=0;i<ByPop3d.size();++i)
-	{
-		cout << "Pop" << i << "\n";
-		for (j=0;j<ByPop3d[i].size();++j)
-		{
-			cout << " Ind" << j << "  ";
-			for (k=0;k<ByPop3d[i][j].size();++k)
-			{
-				cout << ByPop3d[i][j][k] << ",";
-			}
-			cout << "\n";
-		}
-	
-	}
-
-	//resize AllAlleleByPopListSet
-	AllAlleleByPopListSet.resize(ByPop3d.size());//resize number of populations
-	for (i=0;i<AllAlleleByPopListSet.size();++i)
-	{
-		AllAlleleByPopListSet[i].resize(ColKeyToAllAlleleByPopList.size()); //resize number of loci
-																		   //the index in ColKey is the locus index in AllAllelesByPopList level 2
-																		   //the value of ColKey is the index of the allele in ByPop3d level 3
-	}
-	
-	//condense alleles by locus in AllAllelesByPopList, within each population
-	int AlleleIndex;
-	for (i=0;i<ByPop3d.size();++i) //go thru pops
-	{
-		for (j=0;j<ByPop3d[i].size();++j) //go thru indivs
-		{
-			TempList = ByPop3d[i][j]; //get the list of column entries in an indiv
-			for (k=0;k<ColKeyToAllAlleleByPopList.size();++k) //go through each locus
-			{
-				for (l=0;l<ColKeyToAllAlleleByPopList[k].size();++l) //assign columns to loci
-				{
-					AlleleIndex = ColKeyToAllAlleleByPopList[k][l];
-					NewAllele = ByPop3d[i][j][AlleleIndex]; //get the allele in the specified column
-					AllAlleles.push_back(NewAllele); //add the allele to the list of all alleles, missing data included
-					if (NewAllele != "9999") //exclude missing data
-						AllAlleleByPopListSet[i][k].insert(NewAllele); //add the allele to the set of unique alleles at locus k, pop i	
-				}
-			}
-		}
-	}
-	return 0;
-}
-
-
-//removes duplicate alleles and missing data (9999) from the supplied vector
-vector<std::string> MyFilterDuplicates(vector<std::string> ListToFilter)
-{
-	//remove duplicates
-	sort( ListToFilter.begin(), ListToFilter.end() );
-	ListToFilter.erase( std::unique( ListToFilter.begin(), ListToFilter.end() ), ListToFilter.end() );
-	
-	//remove missing data
-	ListToFilter.erase( std::remove( ListToFilter.begin(), ListToFilter.end(), "9999" ), ListToFilter.end() );
-	
-	return ListToFilter;
-}
-
-//removes duplicate numbers from the supplied vector
-vector<std::string> MyFilterDuplicatesII(vector<std::string> ListToFilter)
-{
-	//remove duplicates
-	sort( ListToFilter.begin(), ListToFilter.end() );
-	ListToFilter.erase( std::unique( ListToFilter.begin(), ListToFilter.end() ), ListToFilter.end() );
-	
-	return ListToFilter;
-}
-*/
-
 //returns maximum number of alleles possible at each locus for active and target
 vector<int> MyGetMaxs(vector<vector<vector<int> > > ActiveAlleleByPopList, std::mt19937_64& rng)
 {
@@ -1155,54 +1022,6 @@ int main( int argc, char* argv[] )
 	//Process the dat file
 	MyProcessDatFileIII(DatFileBuffer, AllColumnIDList, ColKeyToAllAlleleByPopList, AllAlleleByPopList, FullAccessionNameList, IndivPerPop, AllAlleles, Rarify);
 	//AllAlleleByPopList, FullAccessionNameList, IndivPerPop, AllAlleles updated by reference
-	
-
-
-
-
-
-
-/***********old work start*********
-
-	vector<std::string> AllAlleles;
-
-	//switch for new MyProcessDatFileIII
-	vector<vector<set<std::string> > > AllAlleleByPopListSet; //structure of this 3D vector is:
-	// { { {pop1,loc1 alleles},{pop1,loc2 alleles},...}, { {pop2,loc1 alleles},{pop2,loc2 alleles},...} } }
-	MyProcessDatFileIII(DatFilePath, AllColumnIDList, AllLociNameList, ColKeyToAllAlleleByPopList, AllAlleleByPopListSet, FullAccessionNameList, IndivPerPop, AllAlleles);
-
-	vector<vector<vector<std::string> > > AllAlleleByPopList( AllAlleleByPopListSet.size(), vector<vector<std::string> >(UniqLociNamesList.size()) ); //structure of this 3D vector is:
-	// { { {pop1,loc1 alleles},{pop1,loc2 alleles},...}, { {pop2,loc1 alleles},{pop2,loc2 alleles},...} } }
-	//sized to number of populations, number of loci.  last level left unsized
-	
-		//Print out lists of unique All alleles from AllAlleleByPopListSet
-		set<std::string> si;
-		for (i=0;i<AllAlleleByPopListSet.size() ;i++)
-		{
-			cout << "Population " << FullAccessionNameList[i] << "\n";
-			for (j=0;j<AllAlleleByPopListSet[i].size();j++)
-			{
-				cout << "Locus " << j << "\n";
-				si = AllAlleleByPopListSet[i][j];
-				for (std::set<std::string>::iterator it=si.begin(); it!=si.end(); ++it)
-					cout << *it << ",";
-				cout << "\n";
-			}
-		}
-
-	//convert set to vector for further processing
-	for (i=0;i<AllAlleleByPopList.size();++i)
-	{
-		for (j=0;j<AllAlleleByPopList[i].size();++j)
-		{
-			vector<std::string> ttvec(AllAlleleByPopListSet[i][j].begin(), AllAlleleByPopListSet[i][j].end()); //use constructor to convert set to vector	
-			AllAlleleByPopList[i][j] = ttvec;
-		}
-	}
-***********old work end*********/
-
-
-
 
 	time_t startd,endd;
 	double dif = difftime (endd,startd);
@@ -1512,7 +1331,7 @@ int main( int argc, char* argv[] )
 			PopSizes, 
 			AlleleFrequencies, 
 			parallelism_enabled,
-			ncpu
+			start1
 		);
 		
 		//stop the clock

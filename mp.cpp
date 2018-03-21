@@ -207,20 +207,6 @@ void mp(
 		vector<int> TempList2;
 		vector<int> bestcore;
 		vector<std::string> TempListStr;
-	
-		/*
-		//seed the random number generator for each thread
-		int tt;
-		tt = (time(NULL));
-		if (parallelism_enabled == 0) 
-		{
-			srand ( tt ); //initialize seed based on clock when not parallel
-		}
-		else
-		{
-			srand ( tt ^ omp_get_thread_num() ); //seed random number generator differently for each thread
-		}
-		*/
 		
 		//seed the random number generator, for each core if parallelism enabled
 		unsigned long long seed = (unsigned long long)chrono::high_resolution_clock::now().time_since_epoch().count();
@@ -620,7 +606,6 @@ void mp(
 		
 			if (remove(RecoveryFilePath))
 				cout << "Failed to delete " << RecoveryFilePath << ": " << strerror(errno) << "\n";
-			//else cout << RecoveryFilePath << " successfully deleted.\n";
 		}
 	}
 }

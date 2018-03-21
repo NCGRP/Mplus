@@ -139,7 +139,7 @@ int aStar
 		vector<int> PopSizes, 
 		vector<Alfreq> AlleleFrequencies, 
 		int parallelism_enabled,
-		int ncpu
+		time_t start1
 	);
 void mp
 	(
