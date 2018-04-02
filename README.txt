@@ -14,7 +14,7 @@ Options:
             and so on, to be sampled.
         reps = number of replicate core sets to calculate for a particular core size
         outputfile = path to output
--r = use rarefaction to correct for differences in sample size of accessions, applies to
+-r use rarefaction to correct for differences in sample size of accessions, applies to
         M+ algorithm only.
 -k kernelfile = use an MSTRAT .ker file to specify mandatory members of the 
         core.  The number of mandatory accessions must therefore be less than or equal to 
